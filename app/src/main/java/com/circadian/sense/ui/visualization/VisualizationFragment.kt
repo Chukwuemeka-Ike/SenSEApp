@@ -44,16 +44,11 @@ class VisualizationFragment : Fragment() {
 //        authManager?.requestUserData()
 //        Log.i(TAG, "Request User Data Response: ${authManager?.dataRequestResponse}")
 
-
         return root
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    fun setAuthManager(authManager: AuthManager){
-        this.authManager = authManager
     }
 }

@@ -31,4 +31,9 @@
     <string name="client_id">23BJF4</string>
     <string name="redirect_uri">app://auth</string>
     <string name="scope">activity heartrate weight</string>
+
+<!--    Data Req-->
+    <string name="data_request_response_file">mLastDataRequestResponse.json</string>
+    <string name="data_key">activities-heart-intraday</string>
+    <string name="dataset_key">dataset</string>
 </resources>
