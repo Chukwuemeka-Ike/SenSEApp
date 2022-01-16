@@ -3,7 +3,7 @@ package com.circadian.sense.ui.settings
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.circadian.sense.AuthManager
+import com.circadian.sense.utilities.AuthManager
 import com.circadian.sense.databinding.ActivityLoginBinding
 import com.google.android.material.snackbar.BaseTransientBottomBar.LENGTH_SHORT
 import com.google.android.material.snackbar.Snackbar

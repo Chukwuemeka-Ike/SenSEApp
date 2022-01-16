@@ -2,12 +2,15 @@ package com.circadian.sense
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.CheckBox
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupWithNavController
 import com.circadian.sense.databinding.ActivityMainBinding
+import com.circadian.sense.utilities.AuthManager
+import com.circadian.sense.utilities.ObserverBasedFilter
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,11 +35,11 @@ class MainActivity : AppCompatActivity() {
 ////        Log.i(tag, "Refresh token: ${authManager.authState.refreshToken}")
 //        authManager.requestUserData()
 
-        // Testing out OBF
-        val OBF = ObserverBasedFilter(this)
-//        OBF.optimizeFilter(dataRequestResponse)
-        val L = floatArrayOf(0.0001242618548789415f, 0.0019148682768328732f, 0.09530636024613613f)
-        OBF.simulateDynamics(L)
+//        // Testing out OBF
+//        val OBF = ObserverBasedFilter(this)
+////        OBF.optimizeFilter(dataRequestResponse)
+//        val L = floatArrayOf(0.0001242618548789415f, 0.0019148682768328732f, 0.09530636024613613f)
+//        OBF.simulateDynamics(L)
 
     }
 

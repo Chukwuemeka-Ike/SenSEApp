@@ -1,4 +1,4 @@
-package com.circadian.sense
+package com.circadian.sense.utilities
 
 import android.content.Context
 import android.util.Log
@@ -19,7 +19,7 @@ class Utils(private val context: Context) {
         try {
             val file = File(context.filesDir, filename)
             file.writeText(data)
-            Log.i("Sense Debug", "Wrote to $filename successfully")
+//            Log.i("Sense Debug", "Wrote to $filename successfully")
         } catch (e: Exception) {
             Log.w(tag, "Write data failed: $e")
         }
@@ -37,7 +37,7 @@ class Utils(private val context: Context) {
         try {
             val file = File(context.filesDir, filename)
             jsonData = JSONObject(file.readText())
-            Log.i(tag, "Successfully loaded from $filename")
+//            Log.i(tag, "Successfully loaded from $filename")
         } catch (e: Exception) {
             Log.w(tag, "$e")
         }

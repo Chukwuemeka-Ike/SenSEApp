@@ -7,7 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import com.circadian.sense.AuthManager
+import com.circadian.sense.utilities.AuthManager
 import com.circadian.sense.R
 
 class SettingsFragment : PreferenceFragmentCompat() {

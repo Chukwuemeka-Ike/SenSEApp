@@ -1,4 +1,4 @@
-package com.circadian.sense
+package com.circadian.sense.utilities
 
 import android.app.PendingIntent
 import android.content.Context
@@ -14,6 +14,7 @@ import com.android.volley.Response
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import com.circadian.sense.R
 import com.circadian.sense.ui.settings.LoginActivity
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
