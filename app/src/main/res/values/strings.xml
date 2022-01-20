@@ -17,20 +17,22 @@
     <string name="logout_description">Log out of your Fitbit account</string>
 
 <!--    Login Activity Strings-->
-    <string name="login_button_label">Connect Fitbit Account</string>
+    <string name="login_button_label">Login to Fitbit</string>
     <string name="retry_button_label">Retry</string>
     <string name="logout_button_label">Logout</string>
 
 <!--    Authorization Workflow Strings-->
-    <string name="authorization_endpoint">https://www.fitbit.com/oauth2/authorize?</string>
-    <string name="token_endpoint">https://api.fitbit.com/oauth2/token</string>
-    <string name="auth_state_pref_file">com_circadian_sense_auth_state</string>
-    <string name="auth_state_pref_key">authState</string>
     <string name="auth_failed_snack">Authorization failed. Please retry</string>
     <string name="auth_success_snack">Authorization successful</string>
-    <string name="client_id">23BJF4</string>
-    <string name="redirect_uri">app://auth</string>
-    <string name="scope">activity heartrate weight</string>
+    <string name="access_revoke_io_error">Network error when revoking Fitbit authorization</string>
+    <string name="access_revoke_json_error">Failed to parse access revoke response</string>
+    <string name="token_refresh_failed">Token refresh failed when fetching user info</string>
+    <string name="request_user_info_io_exception">Network error when querying userinfo endpoint</string>
+    <string name="request_user_info_json_exception">Failed to parse userinfo response</string>
+    <string name="user_already_authenticated">User is already authenticated, returning to main activity</string>
+    <string name="configuration_has_changed">Configuration change detected, discarding old state</string>
+
+
 
 <!--    Data Req-->
     <string name="data_request_response_file">mLastDataRequestResponse.json</string>

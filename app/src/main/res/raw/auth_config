@@ -1,0 +1,14 @@
+{
+  "client_id": "23BJF4",
+  "redirect_uri": "app://auth",
+  "end_session_redirect_uri": "app://auth",
+  "end_session_endpoint": "app://auth",
+  "authorization_scope": "activity heartrate",
+  "discovery_uri": "",
+  "authorization_endpoint_uri": "https://www.fitbit.com/oauth2/authorize?",
+  "registration_endpoint_uri": "https://www.fitbit.com/oauth2/authorize?",
+  "token_endpoint_uri": "https://api.fitbit.com/oauth2/token",
+  "user_info_endpoint_uri": "https://api.fitbit.com/1/user",
+  "revoke_token_endpoint_uri": "https://api.fitbit.com/oauth2/revoke",
+  "https_required": true
+}

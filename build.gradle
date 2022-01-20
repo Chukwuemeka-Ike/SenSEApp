@@ -13,11 +13,12 @@ buildscript {
     }
 }
 
-//allprojects {
-//    repositories {
-//        maven { url "https://jitpack.io" }
-//    }
-//}
+// Versions of external libraries we're using
+project.ext {
+    okioVersion = '2.10.0'
+    appAuthVersion = '0.11.0'
+    mpChartVersion = '3.1.0'
+}
 
 task clean(type: Delete) {
     delete rootProject.buildDir

@@ -6,9 +6,13 @@ import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import com.circadian.sense.R
+import org.json.JSONArray
 import org.json.JSONObject
 import java.lang.Exception
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.concurrent.thread
+import kotlin.system.measureTimeMillis
 
 /**
  * ObserverBasedFilter class to organize the filter's functionalities
@@ -16,6 +20,8 @@ import kotlin.concurrent.thread
 class ObserverBasedFilter (private val context: Context) {
 
     data class UserData(var times: MutableList<Float>, var values: MutableList<Float>)
+    data class FilterOutput(var states: MutableList<Float>, var output: MutableList<Float>)
+
     private var mUtils : Utils
 //    private var mFilterState: String
     private var mUserData: JSONObject
@@ -63,7 +69,8 @@ class ObserverBasedFilter (private val context: Context) {
      * @param [L] - optimal gain matrix
      * @return [] -
      */
-    fun simulateDynamics(L: FloatArray){
+    fun simulateDynamics(L: FloatArray): MutableList<FloatArray> {
+        var filterOutput = mutableListOf<FloatArray>()
         thread{
             // Start Python if not started
             if (! Python.isStarted()) {
@@ -73,14 +80,27 @@ class ObserverBasedFilter (private val context: Context) {
             val py = Python.getInstance()
             val module = py.getModule("main")           // Python filename
             try {
-                val filterOutput = module.callAttr("simulateDynamics", mUserData.toString(), L)
-//                Log.i(tag, "Filter Output: ${filterOutput.asList()[1]}")
+                // Simulate the dynamics and return a FloatArray
+                val d = module.callAttr("simulateDynamics", mUserData.toString(), L).asList()
+                //.toJava(FloatArray::class.java)
 
-                // Currently - Index 0 is OBF states, Index 1 is OBF output
-                // [[x1], [x2], [x3]], [[y]]
-                val y = filterOutput.asList()[1].asList()
-//                Log.i(tag, "y type: ${y}")
-                val filterOutputString : String = """{"y":"$y"}"""
+                // Convert each row of the output to float arrays (max 7) and add to output List<FloatArray>
+//                val output = mutableListOf<FloatArray>()
+                for (i in 0 until d.size){
+                    filterOutput.add(d[i].toJava(FloatArray::class.java))
+                }
+                Log.i(tag, "filterOutput: ${filterOutput[0].slice(0..5)}")
+
+                val yHat = filterOutput.last()
+                Log.i(tag, "Output size: ${yHat.asList()}")
+                Log.i(tag, "d: ${d[3].toJava(FloatArray::class.java).slice(0..30)}")
+//                Log.i(tag, "d size: ${d.size}")
+
+                val yHatArray = JSONArray(yHat.asList())
+
+                // Write the filteredOutput to a JSON file
+                val filterOutputString : String = """{"y":${yHatArray}}"""
+                Log.i(tag, filterOutputString)
                 mUtils.writeData(filterOutputString, "filterOutput.json")
 
                 // Save the system dynamics to a JSON file
@@ -91,6 +111,7 @@ class ObserverBasedFilter (private val context: Context) {
                 Log.i(tag, "Exception: ${e}")
             }
         }
+        return filterOutput
     }
 
     /**
@@ -107,8 +128,31 @@ class ObserverBasedFilter (private val context: Context) {
             val py = Python.getInstance()
             val module = py.getModule("main")           // Python filename
             try {
-                val optimalGains = module.callAttr("optimizeFilter", mUserData.toString())
-                Log.i(tag, "Optimal Gains: ${optimalGains}, ${optimalGains.type()}")
+                val elapsed = measureTimeMillis {
+
+                // Return
+                val optimalGains = module.callAttr("optimizeFilter", mUserData.toString()).asList()
+                Log.i(tag, "Optimal Gains: ${optimalGains}")
+//                .toJava(FloatArray::class.java)
+
+                // Create a list of floats for the gains
+                val d = optimalGains[0].toJava(FloatArray::class.java).asList()
+//                Log.i(tag, "d: ${d}")
+//                val optGainsList = mutableListOf<Float>()
+//                for (i in 0 until optimalGains.size){
+//                    Log.i(tag, "D: ${optimalGains[i].toJava(FloatArray::class.java)[0]}")
+////                    optGainsList.add()
+//                }
+//                Log.i(tag, "After conversion: ${optGainsList}")
+                val optGainsArray = JSONArray(d)
+
+                // Write the filteredOutput to a JSON file
+                val filterGainsString : String = """{"L":${optGainsArray}}"""
+                Log.i(tag, filterGainsString)
+                mUtils.writeData(filterGainsString, "optimalGains.json")
+                }
+                Log.i(tag, "Time elapsed: $elapsed")
+
             }
             catch(e: Exception){
                 Log.i(tag, "Exception: ${e}")
