@@ -1,5 +1,6 @@
 package com.circadian.sense
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -9,7 +10,10 @@ import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupWithNavController
+import com.chaquo.python.Python
+import com.chaquo.python.android.AndroidPlatform
 import com.circadian.sense.databinding.ActivityMainBinding
+import com.circadian.sense.ui.settings.LoginActivity
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -31,7 +35,6 @@ import java.util.concurrent.atomic.AtomicReference
 class MainActivity : AppCompatActivity() {
     private val TAG = "MainActivity"
     private val KEY_USER_INFO = "userInfo"
-    private val END_SESSION_REQUEST_CODE = 911
 
     private lateinit var binding: ActivityMainBinding
 
@@ -44,37 +47,27 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-//        // Testing going directly to LoginActivity - Will more likely have a
-//        // pop-up dialog that asks if they'd like to log in now, then navigate to
-//        // LoginActivity if yes
-//        val d = intent?.extras?.getBoolean("letter")
-//        if(d == null ) {
-//            startActivity(Intent(this, LoginActivity::class.java))
-//            Log.i(TAG, "Starting LoginActivity")
-//        }
-
         mAuthStateManager = AuthStateManager.getInstance(this)
         mExecutor = Executors.newSingleThreadExecutor()
         mConfiguration = Configuration.getInstance(this)
 
-        val config = Configuration.getInstance(this)
-        if (config.hasConfigurationChanged()) {
+        mAuthService = AuthorizationService(
+            this,
+            AppAuthConfiguration.Builder()
+                .setConnectionBuilder(mConfiguration.connectionBuilder)
+                .build()
+        )
+
+        if (mConfiguration.hasConfigurationChanged()) {
             Toast.makeText(
                 this,
                 "Configuration change detected",
                 Toast.LENGTH_SHORT
-            )
-                .show()
-            signOut()
-            return
+            ).show()
+//            signOut()
+//            displayNotAuthorized("Configuration")
+//            return
         }
-
-        mAuthService = AuthorizationService(
-            this,
-            AppAuthConfiguration.Builder()
-                .setConnectionBuilder(config.connectionBuilder)
-                .build()
-        )
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -85,32 +78,16 @@ class MainActivity : AppCompatActivity() {
         navView.setupWithNavController(navController)
 
 
-//        // Testing out OBF
-//        val OBF = ObserverBasedFilter(this)
-////        OBF.optimizeFilter()
-//        val utils = Utils(this)
-//        val gainsJSON = utils.loadJSONData("optimalGains.json")
-//        val L = gainsJSON.getJSONArray("L")
-//        val gainsArr = FloatArray(L.length())
-//        for(i in 0 until L.length()){
-//            gainsArr[i] = L.getDouble(i).toFloat()
-//        }
-//        Log.i(TAG, "Saved gains: ${L}")
-//        val f = OBF.simulateDynamics(gainsArr)
-////        Log.i(TAG, "f: ${f[0]}")
-
-//        // Testing Utils
-//        val utils = Utils(this)
-//        val filterOutput = utils.loadJSONData("filterOutput.json")
-//        val y = filterOutput.getJSONArray("y")
-//        val y1 = y.getDouble(0)
-//        Log.i(TAG, "Saved output: ${y}")
-//        Log.i(TAG, "Output type: ${y1}")
-
+        // Start Python if not started
+        if (! Python.isStarted()) {
+            Log.i(TAG, "Starting Python")
+            Python.start(AndroidPlatform(this))
+        }
     }
 
     override fun onStart() {
         super.onStart()
+
         if (mExecutor.isShutdown) {
             mExecutor = Executors.newSingleThreadExecutor()
         }
@@ -171,7 +148,7 @@ class MainActivity : AppCompatActivity() {
 //        (findViewById<View>(R.id.explanation) as TextView).text = explanation
 //        findViewById<View>(R.id.reauth).setOnClickListener { view: View? -> signOut() }
 
-        Log.i(TAG, "Not authorized")
+        Log.i(TAG, "Not authorized: ${explanation}")
     }
 
     @MainThread
@@ -350,37 +327,39 @@ class MainActivity : AppCompatActivity() {
         //        Content-Type: application/x-www-form-urlencoded
         //        token=<access_token or refresh_token to be revoked>
 
-        val RevokeTokenEndpoint = Uri.parse(mConfiguration.getRevokeTokenEndpointUri().toString())
+//        val RevokeTokenEndpoint = Uri.parse(mConfiguration.getRevokeTokenEndpointUri().toString())
+//
+//        mExecutor.submit {
+//            try {
+//                val conn: HttpURLConnection =
+//                    mConfiguration.connectionBuilder.openConnection(RevokeTokenEndpoint)
+//                conn.requestMethod = "POST"
+//                conn.setRequestProperty("Authorization", "Bearer ${mAuthStateManager.current.accessToken}")
+//                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+//                conn.setRequestProperty("Accept", "application/json")
+//                conn.instanceFollowRedirects = false
+//                conn.doOutput = true
+//
+//                val inputString = "token=${mAuthStateManager.current.accessToken}"
+//                conn.outputStream.write(inputString.toByteArray())
+//
+//                Log.i(TAG, "Response code: ${conn.responseCode}")
+//                Log.i(TAG, "Response message: ${conn.responseMessage}")
+//
+//                if (conn.responseCode == 200) {
+//                    clearAuthState()
+//                }
+//
+//            } catch (ioEx: IOException) {
+//                Log.e(TAG, getString(R.string.access_revoke_io_error), ioEx)
+//                return@submit
+//            } catch (jsonEx: JSONException) {
+//                Log.e(TAG, getString(R.string.access_revoke_json_error), jsonEx)
+//                return@submit
+//            }
+//        }
+        startActivity(Intent(this, LoginActivity::class.java))
 
-        mExecutor.submit {
-            try {
-                val conn: HttpURLConnection =
-                    mConfiguration.connectionBuilder.openConnection(RevokeTokenEndpoint)
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Authorization", "Bearer ${mAuthStateManager.current.accessToken}")
-                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                conn.setRequestProperty("Accept", "application/json")
-                conn.instanceFollowRedirects = false
-                conn.doOutput = true
-
-                val inputString = "token=${mAuthStateManager.current.accessToken}"
-                conn.outputStream.write(inputString.toByteArray())
-
-                Log.i(TAG, "Response code: ${conn.responseCode}")
-                Log.i(TAG, "Response message: ${conn.responseMessage}")
-
-                if (conn.responseCode == 200) {
-                    clearAuthState()
-                }
-
-            } catch (ioEx: IOException) {
-                Log.e(TAG, getString(R.string.access_revoke_io_error), ioEx)
-                return@submit
-            } catch (jsonEx: JSONException) {
-                Log.e(TAG, getString(R.string.access_revoke_json_error), jsonEx)
-                return@submit
-            }
-        }
     }
 
     /**

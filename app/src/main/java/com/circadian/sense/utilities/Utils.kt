@@ -47,7 +47,7 @@ class Utils(private val context: Context) {
 
     // Companion object to hold these values for now
     companion object {
-        private const val tag = "SenSE Debug"
+        private const val tag = "Utils"
 
     }
 

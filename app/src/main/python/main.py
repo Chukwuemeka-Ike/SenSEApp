@@ -44,7 +44,7 @@ def main(inputData: str):
     print(L)
     # print(type(L))
 
-def simulateDynamics(inputData: str, L: np.ndarray) -> np.ndarray:
+def simulateDynamics(t: np.ndarray, y: np.ndarray, L: np.ndarray) -> np.ndarray:
     '''
         Simulates the system dynamics using OBF class and returns the filter output
         Parameters:
@@ -55,15 +55,15 @@ def simulateDynamics(inputData: str, L: np.ndarray) -> np.ndarray:
                 xHat (np.ndarray) - filter states
                 yHat (np.ndarray) - filter output
     '''
-    # Get time and value vectors and create the state space before simulating the dynamics
-    t, y = parseUserData(inputData)     
-    print("Parsed user data")
+    # # Get time and value vectors and create the state space before simulating the dynamics
+    # t, y = parseUserData(inputData)     
+
     A, B, C, D = ObserverBasedFilter().createStateSpace(t, L)
-    print("Created state space")
+    # print("Created state space")
 
-    return ObserverBasedFilter().simulateDynamics(t, y, A, B, C, D)#.tolist()
+    return ObserverBasedFilter().simulateDynamics(t, y, A, B, C, D)
 
-def optimizeFilter(inputData: str) -> np.ndarray:
+def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     '''
         Parses the input data for the time and value vectors, then optimizes 
         the filter and returns the best gain vector
@@ -72,11 +72,11 @@ def optimizeFilter(inputData: str) -> np.ndarray:
         Returns: 
             L (np.ndarray) - optimal gain matrix to use in simulating
     '''
-    # Get time and value vectors
-    t, y = parseUserData(inputData)
+    # # Get time and value vectors
+    # t, y = parseUserData(inputData)
 
     # Optimize the filter and return the optimal gains
-    return ObserverBasedFilter().optimizeFilter(t, y)#.tolist()
+    return ObserverBasedFilter().optimizeFilter(t, y)
 
 def parseUserData(inputData: str) -> np.ndarray:
     '''
@@ -94,14 +94,18 @@ def parseUserData(inputData: str) -> np.ndarray:
 
     times = []
     y = []
-    for entry in inputDataDict[data_key][dataset_key]:
-        times.append(entry['time'])
-        y.append(float(entry['value']))
+    y = inputDataDict['y']
+    t = inputDataDict['t']
 
-    # Convert datetime strings to # minutes from first entry
-    timestamps = [(datetime.strptime(times[i], "%H:%M:%S")) for i in range(len(times)) ]
-    t = [(timestamps[i]-timestamps[0]).total_seconds()/seconds_in_hour for i in range(len(timestamps))]
+    # for entry in inputDataDict[data_key][dataset_key]:
+    #     times.append(entry['time'])
+    #     y.append(float(entry['value']))
 
+    # # Convert datetime strings to # minutes from first entry
+    # timestamps = [(datetime.strptime(times[i], "%H:%M:%S")) for i in range(len(times)) ]
+    # t = [(timestamps[i]-timestamps[0]).total_seconds()/seconds_in_hour for i in range(len(timestamps))]
+
+    # print(t,y)
     t = np.array(t)
     y = np.array(y)
 

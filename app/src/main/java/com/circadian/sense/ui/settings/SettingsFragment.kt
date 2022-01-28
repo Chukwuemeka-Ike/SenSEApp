@@ -21,12 +21,11 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class SettingsFragment : PreferenceFragmentCompat() {
+    private val TAG = "SettingsFragment"
 
     private lateinit var mAuthStateManager: AuthStateManager
     private lateinit var mConfiguration: Configuration
     private lateinit var mExecutor: ExecutorService
-
-    val TAG = "SettingsFragment"
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
@@ -47,7 +46,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         mExecutor = Executors.newSingleThreadExecutor()
         mConfiguration = Configuration.getInstance(requireContext().applicationContext)
 
-//        authManager = context?.let { AuthManager(it) }
         with(mAuthStateManager.current.isAuthorized){
             loginPreference?.isEnabled = !this
             logoutPreference?.isEnabled = this
@@ -91,13 +89,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 conn.instanceFollowRedirects = false
                 conn.doOutput = true
 
-                val inputString = "token=${mAuthStateManager.current.accessToken}"
-                conn.outputStream.write(inputString.toByteArray())
+                val outputString = "token=${mAuthStateManager.current.accessToken}"
+                conn.outputStream.write(outputString.toByteArray())
 
                 Log.i(TAG, "Response code: ${conn.responseCode}")
                 Log.i(TAG, "Response message: ${conn.responseMessage}")
 
-                if (conn.responseCode == 200) {
+                if (conn.responseCode == HttpURLConnection.HTTP_OK) {
                     clearAuthState()
                 }
 

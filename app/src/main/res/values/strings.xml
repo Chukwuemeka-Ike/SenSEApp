@@ -38,4 +38,8 @@
     <string name="data_request_response_file">mLastDataRequestResponse.json</string>
     <string name="data_key">activities-heart-intraday</string>
     <string name="dataset_key">dataset</string>
+    <string name="not_authorized_viz_text">The app has not been authorized yet, so we cannot visualize your data. \n\nPlease navigate to settings to log in to Fitbit</string>
+    <string name="optimize_button_label">Optimize Filter</string>
+    <string name="filtered_data_checkbox">Filtered Data</string>
+    <string name="raw_data_checkbox">Raw Data</string>
 </resources>

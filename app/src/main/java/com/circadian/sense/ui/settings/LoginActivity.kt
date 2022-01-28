@@ -62,9 +62,13 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Log.i(TAG, "Trying to Log in")
+
         mExecutor = Executors.newSingleThreadExecutor()
         mAuthStateManager = AuthStateManager.getInstance(this)
         mConfiguration = Configuration.getInstance(this)
+
+        Log.i(TAG, "State Manager: ${mAuthStateManager!!.current}")
 
         if (mAuthStateManager!!.current.isAuthorized
             && !mConfiguration!!.hasConfigurationChanged()) {

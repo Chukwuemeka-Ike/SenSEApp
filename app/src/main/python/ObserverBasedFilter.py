@@ -25,10 +25,10 @@ class ObserverBasedFilter:
     __stateLength = (2 * __order + 1)
     
     # Optimization hyperparameters
-    __mu = 10
+    __mu = 100
     __rho = 2
-    __lambda = 5
-    __max_iterations = 5
+    __lambda = 50
+    __max_iterations = 25
 
     # Bounds on the filter gains used for optimization
     __LB = -5
