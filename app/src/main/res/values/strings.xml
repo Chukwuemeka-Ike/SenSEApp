@@ -32,7 +32,8 @@
     <string name="user_already_authenticated">User is already authenticated, returning to main activity</string>
     <string name="configuration_has_changed">Configuration change detected, discarding old state</string>
 
-
+<!--    Fonts-->
+    <string name="basic_font">monospace</string>
 
 <!--    Data Req-->
     <string name="data_request_response_file">mLastDataRequestResponse.json</string>

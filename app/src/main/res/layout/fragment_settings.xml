@@ -5,4 +5,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ui.settings.SettingsFragment"
-    android:tag="SettingsFragment"/>
+    android:tag="SettingsFragment">
+
+<!--    <ProgressBar-->
+<!--        android:id="@+id/settings_loading"-->
+<!--        android:layout_width="@dimen/massive_padding"-->
+<!--        android:layout_height="@dimen/massive_padding"-->
+<!--        android:layout_gravity="center_horizontal"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent" />-->
+
+</androidx.constraintlayout.widget.ConstraintLayout>

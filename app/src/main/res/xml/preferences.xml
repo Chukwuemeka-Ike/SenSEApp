@@ -5,7 +5,8 @@
     <PreferenceCategory
         app:key="account_category"
         app:title="Account"
-        app:icon="@drawable/fitbit_emblem">
+        app:icon="@drawable/fitbit_emblem"
+        >
 
         <Preference
             app:key="@string/login_pref_tag"

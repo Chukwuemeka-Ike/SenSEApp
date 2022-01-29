@@ -19,6 +19,9 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.openid.appauth.AuthState
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.AuthorizationService
 import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
@@ -32,6 +35,7 @@ import kotlin.system.measureTimeMillis
 class VizViewModel(application: Application) : AndroidViewModel(application) {
     val mAuthStateManager: AuthStateManager
     private lateinit var mConfiguration: Configuration
+    private lateinit var mAuthService: AuthorizationService
     private lateinit var mExecutor: ExecutorService
     private lateinit var mUtils: Utils
     private lateinit var mOBF: ObserverBasedFilter
@@ -42,6 +46,7 @@ class VizViewModel(application: Application) : AndroidViewModel(application) {
     init {
         mAuthStateManager = AuthStateManager.getInstance(application.applicationContext)
         mConfiguration = Configuration.getInstance(application.applicationContext)
+        mAuthService = AuthorizationService(application.applicationContext)
         mOBF = ObserverBasedFilter()
     }
 
@@ -49,13 +54,43 @@ class VizViewModel(application: Application) : AndroidViewModel(application) {
         if(mAuthStateManager.current.isAuthorized){
             viewModelScope.launch {
                 withContext(Dispatchers.IO){
-                    val userData: List<FloatArray>? = fetchUserInfo()
+
+                    var userData: List<FloatArray>? = null
+
+                    withContext(Dispatchers.Main) {
+                        Log.i(TAG, "Before perform: ${mAuthStateManager.current.accessToken}")
+                        mAuthStateManager.current.performActionWithFreshTokens(
+                            mAuthService,
+                            AuthState.AuthStateAction { accessToken, idToken, ex ->
+//                                if (ex != null) {
+//                                    // negotiation for fresh tokens failed, check ex for more details
+//                                    Log.d(TAG, "Negotiation for fresh tokens failed: ${ex}")
+//                                    return@AuthStateAction
+//                                }
+//                                Log.i(TAG, "Made it into request with fresh tokens")
+                                Log.i(TAG, "${accessToken}, ${idToken}, $ex")
+                                // Update the authState with
+                                mAuthStateManager.replace(mAuthStateManager.current)
+
+                                // Fetch user info on a different thread - no NetworkOnMain
+                                viewModelScope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        userData = fetchUserInfo(accessToken, ex)
+                                    }
+                                }
+                            }
+                        )
+                        Log.i(TAG, "After perform: ${mAuthStateManager.current.accessToken}")
+                    }
+                    Log.i(TAG, "AuthState: ${mAuthStateManager.current.accessToken}")
+                    Log.i(TAG, "${mAuthStateManager.current.accessTokenExpirationTime}")
+//                    userData = fetchUserInfo(mAuthStateManager.current.accessToken)
 
                     val elapsed = measureTimeMillis {
                         if (userData != null) {
                             Log.i(TAG, "Non-null userData")
-                            val t = userData[0]
-                            val y = userData[1]
+                            val t = userData!![0]
+                            val y = userData!![1]
 
                             Log.i(TAG, "Optimizing filter")
                             val L = mOBF.optimizeFilter(t, y)
@@ -97,18 +132,24 @@ class VizViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun fetchUserInfo() : List<FloatArray>? {
+    private fun fetchUserInfo(accessToken: String?, ex: AuthorizationException?) : List<FloatArray>? {
+        if(ex!=null){
+            Log.d(TAG, "Negotiation for fresh tokens failed: ${ex}")
+            return null
+        }
+
         val userInfoEndpoint = mConfiguration.getUserInfoEndpointUri()
         Log.i(TAG, userInfoEndpoint.toString())
         val userId = getUserID()
         val userInfoRequestURL = Uri.parse("$userInfoEndpoint/${userId}/activities/heart/date/2021-12-01/2021-12-01/1min.json")
         Log.i(TAG, userInfoRequestURL.toString())
 
+
         try{
             val conn: HttpURLConnection =
                 mConfiguration.connectionBuilder.openConnection(userInfoRequestURL)
             conn.requestMethod = "GET"
-            conn.setRequestProperty("Authorization", "Bearer ${mAuthStateManager.current.accessToken}")
+            conn.setRequestProperty("Authorization", "Bearer ${accessToken}")
             conn.setRequestProperty("Accept", "application/json")
             conn.instanceFollowRedirects = false
             conn.doInput = true

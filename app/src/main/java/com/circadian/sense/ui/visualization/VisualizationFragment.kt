@@ -105,8 +105,8 @@ class VisualizationFragment : Fragment() {
         })
 
         optimizeButton.setOnClickListener {
-            loadingContainer.visibility = View.VISIBLE
-            chart.visibility = View.GONE
+//            loadingContainer.visibility = View.VISIBLE
+//            chart.visibility = View.GONE
             vizViewModel.runWorkflow()
         }
 
