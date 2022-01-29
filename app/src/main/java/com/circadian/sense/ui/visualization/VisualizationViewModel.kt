@@ -1,120 +1,126 @@
 package com.circadian.sense.ui.visualization
 
+import android.app.Application
+import android.graphics.Color
+import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.*
-import com.circadian.sense.FilterData
-import com.circadian.sense.FilterDataRepository
-import kotlinx.coroutines.flow.Flow
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import com.circadian.sense.utilities.*
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlin.Exception
+import kotlinx.coroutines.withContext
+import net.openid.appauth.AuthState
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.AuthorizationService
+import okio.IOException
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.util.concurrent.ExecutorService
+import kotlin.system.measureTimeMillis
 
-class VisualizationViewModel(
-    private val repository: FilterDataRepository
-    ) : ViewModel() {
+class VisualizationViewModel(application: Application) : AndroidViewModel(application) {
+    private val TAG = "VizViewModel"
+    val mAuthStateManager: AuthStateManager
+    private lateinit var mConfiguration: Configuration
+    private lateinit var mAuthService: AuthorizationService
+    private lateinit var mOBF: ObserverBasedFilter
+    private lateinit var mDataManager: DataManager
 
-    init {
-//        populateChartData()
-    }
-    // Using LiveData and caching what allWords returns has several benefits:
-    // - We can put an observer on the data (instead of polling for changes) and only update the
-    //   the UI when the data actually changes.
-    // - Repository is completely separated from the UI through the ViewModel.
-    val allData: LiveData<List<FilterData>> = repository.allData.asLiveData()
-
-//    private val _chartData = drawChartData(allData.value)
-//    val chartData: MutableLiveData<ArrayList<ILineDataSet>>? = _chartData
+    private val _chartData = MutableLiveData<ArrayList<ILineDataSet>>()
+    val chartData: LiveData<ArrayList<ILineDataSet>> = _chartData
 
     private val _text = MutableLiveData<String>().apply {
         value = "Data Visualization"
     }
     val text: LiveData<String> = _text
 
-//    fun populateChartData() = viewModelScope.launch {
-//        withContext(Dispatchers.IO) {
-//            val dataB = convertDataBaseToFloatArray(repository.allData)
-//            val t = dataB?.get(0)
-//            val y = dataB?.get(1)
-////            val t = floatArrayOf(0f, 0.1f, 0.2f, 0.3f, .4f, .5f, .6f, .7f, .8f)
-////            val y = floatArrayOf(65f, 62f, 67f, 65f, 62f, 67f, 65f, 62f, 67f)
-//            val L = floatArrayOf(0f, 0.002f, 0.09f)
-//            if (t != null) {
-//                ObserverBasedFilterDummy().simulateDynamics(t, y!!, L)
-//            }
-//        }
-//    }
+    init {
+        mAuthStateManager = AuthStateManager.getInstance(application.applicationContext)
+        mConfiguration = Configuration.getInstance(application.applicationContext)
+        mAuthService = AuthorizationService(application.applicationContext)
+        mOBF = ObserverBasedFilter()
+        mDataManager = DataManager(
+            application.applicationContext,
+            mAuthStateManager,
+            mConfiguration,
+            mAuthService
+        )
+    }
 
-    private fun convertDataBaseToFloatArray(allData: Flow<List<FilterData>>): List<FloatArray>? {
-        return try {
-            val allDataList = allData.asLiveData().value!!
-            val t = FloatArray(allDataList.size)
-            val y = FloatArray(allDataList.size)
-            for (i in allDataList.indices){
-                y[i] = allDataList[i].y
-                t[i] = allDataList[i].t
-            }
-            listOf<FloatArray>(t, y)
+    fun runWorkflow(){
+        viewModelScope.launch {
+        withContext(Dispatchers.IO){
+            val userData = mDataManager.fetchUserInfo()
+            Log.i(TAG, "Times: ${userData!![0].slice(0..9)}")
+            Log.i(TAG, "Value: ${userData!![1].slice(0..9)}")
+
+            val elapsed = measureTimeMillis {
+                if (userData != null) {
+                    Log.i(TAG, "Non-null userData")
+                    val t = userData[0]
+                    val y = userData[1]
+
+                    Log.i(TAG, "Optimizing filter")
+                    val L = mOBF.optimizeFilter(t, y)
+
+                    Log.i(TAG, "Simulating dynamics")
+                    val filterOutput: MutableList<FloatArray>? =
+                        mOBF.simulateDynamics(t, y, L!!)
+                    val yHat = filterOutput!!.last()
+                    Log.i(TAG, "yHat in vizModel: ${yHat.slice(0..4)}")
+
+                    val dataSets: ArrayList<ILineDataSet> = createChartDataset(t, y, yHat)
+
+                    withContext(Dispatchers.Main){
+                        // main operation
+                        _chartData.value = dataSets
+                    }
+
+                }
+            }; Log.i(TAG, "Total time taken: $elapsed")
         }
-        catch (e: Exception){
-            Log.i(TAG, "$e")
-            null
         }
     }
 
     /**
-     * Launching a new coroutine to insert the data in a non-blocking way
+     * Creates a the chart dataset we'll use
      */
-    fun insert(filterData: FilterData) = viewModelScope.launch {
-        repository.insert(filterData)
-    }
-
-//    private fun drawChartData(allData: List<FilterData>?): MutableLiveData<ArrayList<ILineDataSet>>? {
-//        if(allData != null && allData.isNotEmpty()){
-//            // Load raw user data
-//            val rawDataEntries = mutableListOf<Entry>()
-//            val filterDataEntries = mutableListOf<Entry>()
-//            for(entry in allData.indices){
-//                rawDataEntries.add(Entry(allData[entry].t, allData[entry].y))
-//                filterDataEntries.add(Entry(allData[entry].t, allData[entry].yHat))
-//            }
-//
-//            val rawDataset = LineDataSet(rawDataEntries, "Heart Rate")
-//            rawDataset.color = Color.MAGENTA
-//            rawDataset.setDrawCircles(false)
-//
-//            val filterDataset = LineDataSet(filterDataEntries, "Filtered Output")
-//            filterDataset.color = Color.RED
-//            filterDataset.setDrawCircles(false)
-//
-//            val dataSets: ArrayList<ILineDataSet> = ArrayList()
-//            dataSets.add(rawDataset)
-//            dataSets.add(filterDataset)
-//
-//            return MutableLiveData<ArrayList<ILineDataSet>>(dataSets)
-//
-//        }
-//        return null
-//    }
-
-
-    class VisualizationViewModelFactory(
-        private val repository: FilterDataRepository
-        ) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(VisualizationViewModel::class.java)) {
-                @Suppress("UNCHECKED_CAST")
-                return VisualizationViewModel(repository) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
+    private fun createChartDataset(
+        t: FloatArray,
+        y: FloatArray,
+        yHat: FloatArray
+    ): ArrayList<ILineDataSet> {
+        val rawDataEntries = mutableListOf<Entry>()
+        val filterDataEntries = mutableListOf<Entry>()
+        for(entry in t.indices){
+            rawDataEntries.add(Entry(t[entry], y[entry]))
+            filterDataEntries.add(Entry(t[entry], yHat[entry]))
         }
+
+        val rawDataset = LineDataSet(rawDataEntries, "Heart Rate")
+        rawDataset.color = Color.MAGENTA
+        rawDataset.setDrawCircles(false)
+
+        val filterDataset = LineDataSet(filterDataEntries, "Filtered Output")
+        filterDataset.color = Color.RED
+        filterDataset.setDrawCircles(false)
+
+        val dataSets: ArrayList<ILineDataSet> = ArrayList()
+        dataSets.add(rawDataset)
+        dataSets.add(filterDataset)
+
+        return dataSets
     }
 
-    companion object {
-        private const val TAG = "VizViewModel"
-        private const val timesKey = "t"
-        private const val valuesKey = "y"
-        private const val mDatasetKey = "dataset"
-        private const val mActivitiesIntradayKey = "activities-heart-intraday"
-        data class DataSignal(var times: FloatArray, var values: FloatArray)
-        private val mUserDataFile = "rawUserData.json"
-    }
 }

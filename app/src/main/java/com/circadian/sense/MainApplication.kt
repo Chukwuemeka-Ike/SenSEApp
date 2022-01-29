@@ -1,8 +1,6 @@
 package com.circadian.sense
 
 import android.app.Application
-import com.circadian.sense.utilities.AuthStateManager
-import com.circadian.sense.utilities.UserDataManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 

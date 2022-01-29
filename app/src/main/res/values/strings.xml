@@ -1,8 +1,9 @@
 <resources>
     <string name="app_name">SenSE</string>
+
 <!--    Home Fragment Strings-->
     <string name="title_home">Home</string>
-    <string name="home_greeting">Welcome to SenSE.\n\n We are working towards a more optimized life experience.\n\n\n To get started, please grant the app access to your Fitbit data in settings.</string>
+    <string name="home_greeting">Welcome to SenSE.\n\n\n\n We are working towards a more optimized life experience.\n\n\n\n To get started, please grant the app access to your Fitbit data in settings.</string>
 
 <!--    Visualization Fragment Strings-->
     <string name="title_visualization">Visualization</string>
@@ -15,6 +16,7 @@
     <string name="login_description">Grant SenSE access to your Fitbit data</string>
     <string name="logout_pref_tag">logout</string>
     <string name="logout_description">Log out of your Fitbit account</string>
+    <string name="start_auth">Logging in…</string>
 
 <!--    Login Activity Strings-->
     <string name="login_button_label">Login to Fitbit</string>

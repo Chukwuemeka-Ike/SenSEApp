@@ -48,25 +48,21 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private var logoutPreference: Preference? = null
 
     /**
-     *   Registers for  an activity result when we launch the CustomTabsIntent
-     *   for user to sign in, then puts the result into MainActivity's intent
+     *   Registers for an activity result when we launch the CustomTabsIntent
+     *   for user to sign in, then continues the authorization based on result
      */
     private val startForResult = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
 
+        // If successful, continue authorization with the returned data
         if (result.resultCode == AppCompatActivity.RESULT_OK) {
-            // Pass the data to MainActivity via an intent. No need to
-            // start the activity cos we're in it
             val authorizationExchangeResponse = result.data
             val mainIntent = Intent(
                 requireContext().applicationContext, MainActivity::class.java
             )
-//            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtras(authorizationExchangeResponse!!)
-//            activity?.intent = mainIntent
             continueAuth(mainIntent)
-//            startActivity(mainIntent)
             loginPreference?.isEnabled = false
             logoutPreference?.isEnabled = true
 
@@ -109,7 +105,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             logoutPreference?.isEnabled = this
         }
 
-        // Starts authorization workflow
+        // Starts authorization workflow when login is clicked
         loginPreference?.setOnPreferenceClickListener{
             startAuth()
             true
@@ -121,10 +117,34 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
+//        val feedBack: Preference? = findPreference("feedback")
+//        feedBack?.setOnPreferenceClickListener {
+//            refreshAccessToken()
+//            true
+//        }
+
         // Start warming up the browser and auth process if not authorized
         if (!mAuthStateManager.current.isAuthorized) {
             mExecutor.submit(Runnable { this.initializeAppAuth() })
         }
+
+        // If invalid configuration, scream
+        if (!mConfiguration.isValid){
+            displayError(mConfiguration.getConfigurationError()!!)
+        }
+
+        // Discard any existing authorization state due to the change of configuration
+        // TODO: SECURITY CHECK. Someone shouldn't be able to just
+        //  add something in and we accept it
+        if (mConfiguration.hasConfigurationChanged()) {
+            mAuthStateManager.replace(AuthState())
+            mConfiguration.acceptConfiguration()
+            Log.i(TAG, getString(R.string.configuration_has_changed))
+            Toast.makeText(requireContext(), getString(R.string.configuration_has_changed),
+                Toast.LENGTH_SHORT).show()
+            displayNotAuthorized(getString(R.string.configuration_has_changed))
+        }
+
         return super.onCreateView(inflater, container, savedInstanceState)
     }
 
@@ -139,7 +159,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
      */
     @MainThread
     fun startAuth() {
-        displayLoading("Making authorization request")
+        displayLoading(getString(R.string.start_auth))
         mExecutor.submit { doAuth() }
     }
 
@@ -170,7 +190,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     @WorkerThread
     private fun initializeAppAuth() {
         Log.i(TAG, "Initializing AppAuth")
-//        recreateAuthorizationService()
+        recreateAuthorizationService()
         if (mAuthStateManager.current.authorizationServiceConfiguration != null) {
             // configuration is already created, skip to client initialization
             Log.i(TAG, "auth config already established")
@@ -299,81 +319,29 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    @MainThread
-    private fun displayError(error: String) {
-        Toast.makeText(
-            requireContext(),
-            error,
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
-    @MainThread
-    private fun displayLoading(loadingMessage: String) {
-//        findViewById<View>(R.id.loading_container).visibility = View.VISIBLE
-////        findViewById<View>(R.id.auth_container).visibility = View.GONE
-////        findViewById<View>(R.id.error_container).visibility = View.GONE
-//        (findViewById<View>(R.id.loading_description) as TextView).text =
-//            loadingMessage
-        Log.i(TAG, "Loading: $loadingMessage")
-    }
-
-    private fun displayAuthCancelled() {
-        Toast.makeText(
-            requireContext(),
-            R.string.auth_failed_snack,
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
+    /**
+     * Continues the authorization workflow with the intent received from
+     * user login
+     */
     private fun continueAuth(intent: Intent){
-        // the stored AuthState is incomplete, so check if we are currently receiving the result of
-        // the authorization flow from the browser.
+        // Get the response and exception from the intent
         val response = AuthorizationResponse.fromIntent(intent)
         val ex = AuthorizationException.fromIntent(intent)
 
-        // TODO: Check if this is redundant
+        // Update the authorization state with the login result
         if (response != null || ex != null) {
             mAuthStateManager.updateAfterAuthorization(response, ex)
         }
 
-        Log.i(TAG, "${response}, ${response?.authorizationCode}, $ex")
+        // Exchange authorization code for tokens if it's available
         if (response != null && response.authorizationCode != null) {
-            // authorization code exchange is required
-            mAuthStateManager.updateAfterAuthorization(response, ex)
+//            mAuthStateManager.updateAfterAuthorization(response, ex)
             exchangeAuthorizationCode(response)
         } else if (ex != null) {
             displayNotAuthorized("Authorization flow failed: " + ex.message)
         } else {
             displayNotAuthorized("No authorization state retained - reauthorization required")
         }
-    }
-
-
-    @MainThread
-    private fun displayNotAuthorized(explanation: String) {
-        // TODO: Implement something useful
-        Toast.makeText(requireContext(), "Not authorized", Toast.LENGTH_SHORT).show()
-//        findViewById<View>(R.id.not_authorized).visibility = View.VISIBLE
-//        findViewById<View>(R.id.authorized).visibility = View.GONE
-//        findViewById<View>(R.id.loading_container).visibility = View.GONE
-//        (findViewById<View>(R.id.explanation) as TextView).text = explanation
-//        findViewById<View>(R.id.reauth).setOnClickListener { view: View? -> signOut() }
-
-        Log.i(TAG, "Not authorized: ${explanation}")
-    }
-
-    @MainThread
-    private fun displayAuthorized() {
-        // TODO: Implement something useful
-//        findViewById<View>(R.id.authorized).visibility = View.VISIBLE
-//        findViewById<View>(R.id.not_authorized).visibility = View.GONE
-//        findViewById<View>(R.id.loading_container).visibility = View.GONE
-        val state: AuthState = mAuthStateManager.current
-
-//        val userInfo = mUserInfoJson.get()
-
-        Log.i(TAG, "Authorization successful")
     }
 
     /**
@@ -444,6 +412,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         tokenResponse: TokenResponse?,
         authException: AuthorizationException?
     ) {
+
         mAuthStateManager.updateAfterTokenResponse(tokenResponse, authException)
         requireActivity().runOnUiThread { displayAuthorized() }
     }
@@ -469,18 +438,23 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     /**
-     * Log out the user
+     * Logs out the user by revoking app access to their data and
      */
     @MainThread
     private fun logOut() {
-        // revoke the refresh token with Fitbit first before clearing authState locally
+        // revoke the access token with Fitbit first before clearing authState locally
         // Request to revoke
         //        POST https://api.fitbit.com/oauth2/revoke
-        //        Authorization: Bearer Y2xpZW50X2lkOmNsaWVudCBzZWNyZXQ=
+        //        Authorization: Bearer <access_token>
         //        Content-Type: application/x-www-form-urlencoded
         //        token=<access_token or refresh_token to be revoked>
 
         val RevokeTokenEndpoint = Uri.parse(mConfiguration.getRevokeTokenEndpointUri().toString())
+
+        // Refresh access token first to ensure no issues with revoking
+        if (mAuthStateManager.current.needsTokenRefresh) {
+            refreshAccessToken()
+        }
 
         mExecutor.submit {
             try {
@@ -502,16 +476,23 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 Log.i(TAG, "Response message: ${conn.responseMessage}")
 
                 // If we get a successful or unauthorized response, clear the auth state
-                // We're either no longer authorized, or
-                // TODO: What happens if they try to sign out with old access token?
+                // We're either no longer authorized, or something is wrong
                 if (responseCode == HttpURLConnection.HTTP_OK ||
                     responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
                     clearAuthState()
+
+                    this.initializeAppAuth()
+                    // Set the login, logout buttons
+                    requireActivity().runOnUiThread {
+                        findPreference<Preference?>(getString(R.string.login_pref_tag))?.isEnabled = true
+                        findPreference<Preference?>(getString(R.string.logout_pref_tag))?.isEnabled = false
+                    }
                 }
                 else {
                     Log.w(TAG, "Problem with revoke attempt: ${responseCode}")
                 }
                 conn.disconnect()
+
 
             } catch (ioEx: IOException) {
                 Log.e(TAG, getString(R.string.access_revoke_io_error), ioEx)
@@ -521,8 +502,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 return@submit
             }
         }
-        findPreference<Preference?>(getString(R.string.login_pref_tag))?.isEnabled = true
-        findPreference<Preference?>(getString(R.string.logout_pref_tag))?.isEnabled = false
     }
 
     /**
@@ -537,5 +516,37 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
         mAuthStateManager.replace(clearedState)
     }
+
+    /**
+     * Display functions
+     */
+    @MainThread
+    private fun displayError(error: String) {
+        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+    }
+
+    @MainThread
+    private fun displayLoading(loadingMessage: String) {
+        Log.i(TAG, "Loading: $loadingMessage")
+    }
+
+    private fun displayAuthCancelled() {
+        Toast.makeText(requireContext(), R.string.auth_failed_snack, Toast.LENGTH_SHORT).show()
+    }
+
+    @MainThread
+    private fun displayNotAuthorized(explanation: String) {
+        // TODO: Implement something useful
+        Toast.makeText(requireContext(), "Not authorized", Toast.LENGTH_SHORT).show()
+        Log.i(TAG, "Not authorized: ${explanation}")
+    }
+
+    @MainThread
+    private fun displayAuthorized() {
+        // TODO: Implement something useful
+        Toast.makeText(requireContext(), "Authorization successful", Toast.LENGTH_SHORT).show()
+        Log.i(TAG, "Authorization successful")
+    }
+
 
 }

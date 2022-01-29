@@ -18,7 +18,6 @@ import java.io.IOException
 import java.lang.ref.WeakReference
 import java.nio.charset.Charset
 
-
 /**
  * Reads and validates the app configuration from `res/raw/auth_config.json`. Configuration
  * changes are detected by comparing the hash of the last known configuration to the read
@@ -111,7 +110,7 @@ class Configuration(private val mContext: Context) {
             return DefaultConnectionBuilder.INSTANCE
         }
     private val lastKnownConfigHash: String?
-        private get() = mPrefs.getString(KEY_LAST_HASH, null)
+        get() = mPrefs.getString(KEY_LAST_HASH, null)
 
     @Throws(InvalidConfigurationException::class)
     private fun readConfiguration() {
@@ -163,9 +162,9 @@ class Configuration(private val mContext: Context) {
 
     fun getConfigString(propName: String?): String? {
         var value = mConfigJson!!.optString(propName)
-        if (value == null) {
-            return null
-        }
+//        if (value == null) {
+//            return null
+//        }
         value = value.trim { it <= ' ' }
         return if (TextUtils.isEmpty(value)) {
             null
@@ -222,7 +221,7 @@ class Configuration(private val mContext: Context) {
     // ensure that the redirect URI declared in the configuration is handled by some activity
     // in the app, by querying the package manager speculatively
     private val isRedirectUriRegistered: Boolean
-        private get() {
+        get() {
             // ensure that the redirect URI declared in the configuration is handled by some activity
             // in the app, by querying the package manager speculatively
             val redirectIntent = Intent()

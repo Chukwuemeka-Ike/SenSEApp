@@ -52,6 +52,7 @@ class ObserverBasedFilter:
                     yHat (np.ndarray) - filter output
         '''
         xHat = np.zeros([self.__stateLength, len(y)], dtype=float)
+        xHat[self.__stateLength-1, 0] = 70
 
         for j in range(1, len(y)):
             # TODO: Make sure this is as efficient as possible

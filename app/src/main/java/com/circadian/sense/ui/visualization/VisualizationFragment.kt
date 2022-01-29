@@ -14,6 +14,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
+import com.chaquo.python.Python
+import com.chaquo.python.android.AndroidPlatform
 import com.circadian.sense.FilterData
 import com.circadian.sense.FilterDataRepository
 import com.circadian.sense.MainApplication
@@ -25,6 +27,7 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
+import com.github.mikephil.charting.utils.Utils
 import kotlinx.coroutines.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -33,8 +36,7 @@ class VisualizationFragment : Fragment() {
 
     val TAG = "VisualizationFragment"
 
-    private lateinit var visualizationViewModel: VisualizationViewModel
-    private lateinit var vizViewModel: VizViewModel
+    private lateinit var vizViewModel: VisualizationViewModel
     private var _binding: FragmentVisualizationBinding? = null
 
     // This property is only valid between onCreateView and onDestroyView
@@ -42,11 +44,6 @@ class VisualizationFragment : Fragment() {
 
     private lateinit var mAuthStateManager: AuthStateManager
     private lateinit var mConfiguration: Configuration
-    private lateinit var mExecutor: ExecutorService
-    private lateinit var mUtils: Utils
-    private lateinit var mOBF: ObserverBasedFilter
-//    optimizeFilter(t: FloatArray, y: FloatArray): FloatArray?
-//    simulateDynamics(t: FloatArray, y: FloatArray, L: FloatArray): MutableList<FloatArray>?
 
     private lateinit var chart: LineChart
     private lateinit var loadingContainer: LinearLayout
@@ -59,20 +56,13 @@ class VisualizationFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
 
-        // Set the ViewModel
-        vizViewModel = VizViewModel(requireActivity().application)
-//        visualizationViewModel = VisualizationViewModel((activity?.application as MainApplication).repository)
-
-        // Set the ViewBinding
+        // Set the ViewModel and ViewBinding
+        vizViewModel = VisualizationViewModel(requireActivity().application)
         _binding = FragmentVisualizationBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
         mAuthStateManager = AuthStateManager.getInstance(requireContext().applicationContext)
-        mExecutor = Executors.newSingleThreadExecutor()
         mConfiguration = Configuration.getInstance(requireContext().applicationContext)
-//        mUtils = Utils(requireContext().applicationContext)
-//        mOBF = ObserverBasedFilter()
-
 
         // The chart for data visualization
         chart = binding.dataVisualizer
@@ -86,6 +76,8 @@ class VisualizationFragment : Fragment() {
         val vizRawData = binding.vizRawData
         val vizFilterData = binding.vizFilterData
 
+        vizRawData.isEnabled = false
+        vizFilterData.isEnabled = false
         vizRawData.isChecked = true
         vizFilterData.isChecked = true
 //        vizRawData.setOnClickListener { makeDataVisible(vizRawData) }
@@ -95,18 +87,20 @@ class VisualizationFragment : Fragment() {
 //        visualizationViewModel.text.observe(viewLifecycleOwner, Observer {
 //            textView.text = it
 //        })
-//
+
         val optimizeButton = binding.optimizeButton
         vizViewModel.chartData.observe(viewLifecycleOwner, { dataSets ->
             loadingContainer.visibility = View.GONE
             chart.visibility = View.VISIBLE
+            vizRawData.isEnabled = true
+            vizFilterData.isEnabled = true
             chart.data = LineData(dataSets)
             chart.invalidate()
         })
 
         optimizeButton.setOnClickListener {
-//            loadingContainer.visibility = View.VISIBLE
-//            chart.visibility = View.GONE
+            loadingContainer.visibility = View.VISIBLE
+            chart.visibility = View.GONE
             vizViewModel.runWorkflow()
         }
 
@@ -149,7 +143,6 @@ class VisualizationFragment : Fragment() {
 //                updateChartData()
 ////                optimizeButton.isEnabled = true
 //            }
-
 
         return root
     }
@@ -209,6 +202,24 @@ class VisualizationFragment : Fragment() {
             chart.legend.textColor = Color.BLACK
         }
     }
+
+//    /**
+//     * Makes the data visible according to whether each checkbox is checked
+//     * params:
+//     * [v]
+//     */
+//    private fun makeDataVisible(v:View){
+//        when (v.id){
+//            R.id.vizFilterData -> {
+//                filterDataset!!.isVisible = binding.vizFilterData.isChecked
+//            }
+//            R.id.vizRawData ->{
+//                rawDataset!!.isVisible = binding.vizRawData.isChecked
+//            }
+//        }
+//        chart.invalidate()
+//    }
+
 
 //    suspend fun populateChartData(allData: List<FilterData>) = withContext(Dispatchers.IO) {
 //        val dataB = convertDataBaseToFloatArray(allData)
@@ -309,150 +320,6 @@ class VisualizationFragment : Fragment() {
 ////        chart.invalidate()
 ////    }
 
-//
-//    /**
-//     * Makes the data visible according to whether each checkbox is checked
-//     * params:
-//     * [v]
-//     */
-//    private fun makeDataVisible(v:View){
-//        when (v.id){
-//            R.id.vizFilterData -> {
-//                filterDataset!!.isVisible = binding.vizFilterData.isChecked
-//            }
-//            R.id.vizRawData ->{
-//                rawDataset!!.isVisible = binding.vizRawData.isChecked
-//            }
-//        }
-//        chart.invalidate()
-//    }
-//
-////    private fun fetchUserInfo(accessToken: String){
-////        val userInfoEndpoint = mConfiguration.getUserInfoEndpointUri()
-////        Log.i(TAG, userInfoEndpoint.toString())
-////        val userId = getUserID()
-////        val userInfoRequestURL = Uri.parse("$userInfoEndpoint/${userId}/activities/heart/date/2021-12-01/2021-12-01/1min.json")
-////        Log.i(TAG, userInfoRequestURL.toString())
-////
-////        mExecutor.submit{
-////            try{
-////                val conn: HttpURLConnection =
-////                    mConfiguration.connectionBuilder.openConnection(userInfoRequestURL)
-////                conn.requestMethod = "GET"
-////                conn.setRequestProperty("Authorization", "Bearer $accessToken")
-////                conn.setRequestProperty("Accept", "application/json")
-////                conn.instanceFollowRedirects = false
-////                conn.doInput = true
-////
-////                val responseCode = conn.responseCode
-////                Log.i(TAG, "GET Response Code :: $responseCode")
-////
-////                if (responseCode == HttpURLConnection.HTTP_OK) { // success
-////                    val `in` = BufferedReader(
-////                        InputStreamReader(conn.inputStream)
-////                    )
-////                    var inputLine: String?
-////                    val response = StringBuffer()
-////                    while (`in`.readLine().also { inputLine = it } != null) {
-////                        response.append(inputLine)
-////                    }
-////                    `in`.close()
-////
-////                    // print result
-////                    Log.i(TAG, response.toString())
-////                    storeUserData(response.toString())
-////                } else {
-////                    Log.i(TAG,"GET request failed")
-////                }
-////            }
-////            catch (ioEx: IOException) {
-////                Log.e(TAG, "IOException", ioEx)
-////                return@submit
-////            } catch (jsonEx: JSONException) {
-////                Log.e(TAG, "JSON Exception", jsonEx)
-////                return@submit
-////            }
-////        }
-////
-////
-////
-////    }
-////
-////    /**
-////     * Gets user id from mAuthState
-////     * @return user_id from mLastTokenResponse or null if there is none
-////     */
-////    // TODO: Complete this, make better
-////    private fun getUserID(): String? {
-////        return try{
-////            val tokenRequestResult =
-////                mAuthStateManager.current.jsonSerialize().getJSONObject("mLastTokenResponse")
-////            val dataSet = tokenRequestResult.getJSONObject("additionalParameters")
-////            dataSet.getString("user_id")
-////        }
-////        catch (e: Exception) {
-////            Log.w(tag, "User ID unavailable: ${e}")
-////            null
-////        }
-////
-////    }
-////
-////    private fun storeUserData(response: String){
-////
-////        // Read the UserData JSONObject from file
-////        try {
-////            val dataRequestResponse = JSONObject(response)
-////            val activitiesIntradayValue = dataRequestResponse.getJSONObject(mActivitiesIntradayKey)
-////            val activitiesIntradayDataset = activitiesIntradayValue.getJSONArray(mDatasetKey)
-////
-////            val n = activitiesIntradayDataset.length()
-////
-////            val times = FloatArray(n)
-////            val values = FloatArray(n)
-////
-////            for (i in 0 until n) {
-////                if (i == 0){
-////                    times[i] = 0.0167F
-////                }
-////                else{
-////                    times[i] = times[i-1]+0.0167F
-////                }
-////                values[i] = activitiesIntradayDataset.getJSONObject(i).getString("value").toFloat()
-////            }
-////            val timesJSONArray = JSONArray(times.asList())
-////            val yJSONArray = JSONArray(values.asList())
-////
-////            // Write the rawUserData to a JSON file
-////            val rawUserDataString : String = """{${timesKey}:${timesJSONArray}, ${valuesKey}:${yJSONArray}}"""
-////            Log.i(TAG, rawUserDataString)
-////            mUtils.writeData(rawUserDataString, mUserDataFile)
-////
-////        } catch (e: java.lang.Exception) {
-////            Log.w(TAG, "Error loading user data: $e")
-////            e.printStackTrace()
-////        }
-////    }
-////
-////
-////    private fun parseUserData(jsonData: JSONObject): DataSignal {
-////
-////        val timesArray = jsonData.getJSONArray(timesKey)
-////        val valuesArray = jsonData.getJSONArray(valuesKey)
-////        val n = timesArray.length()
-////        val t = FloatArray(n)
-////        val y = FloatArray(n)
-////
-////        for (i in 0 until n) {
-////            if (i == 0){
-////                t[i] = 0.0167F
-////            }
-////            else{
-////                t[i] = t[i-1]+0.0167F
-////            }
-////            y[i] = valuesArray.getDouble(i).toFloat()
-////        }
-////        return DataSignal(t, y)
-////    }
 
     companion object {
         private const val timesKey = "t"
@@ -499,11 +366,6 @@ class VisualizationFragment : Fragment() {
 ////        filterDataset.color = Color.RED
 ////        filterDataset.setDrawCircles(false)
 //
-////////        val utils = Utils(requireActivity().applicationContext)
-////////        val filterOutputJson = utils.loadJSONData("filterOutput.json")
-////////        val dataSet = filterOutputJson.getJSONArray("y")
-////////        Log.i(tag, "dataset: $filterOutputJson")
-////
 //val dataSets: ArrayList<ILineDataSet> = ArrayList()
 //dataSets.add(rawDataset)
 ////        dataSets.add(filterDataset)

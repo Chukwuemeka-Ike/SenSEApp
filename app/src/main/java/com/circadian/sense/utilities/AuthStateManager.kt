@@ -10,7 +10,6 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 
-
 /**
  * Persistence mechanism for an [AuthState] instance.
  * This stores the instance in a shared preferences file, and provides thread-safe access and
