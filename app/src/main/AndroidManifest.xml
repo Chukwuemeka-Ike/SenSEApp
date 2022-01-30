@@ -29,13 +29,6 @@
             </intent-filter>
         </activity>
 
-        <!-- TODO: Working to eliminate this completely  -->
-        <activity
-            android:name=".ui.settings.LoginActivity"
-            android:exported="false"
-            android:launchMode="standard"
-            android:parentActivityName=".MainActivity" />
-
         <!-- Allows us capture the Fitbit initial auth redirect uri from - "app://auth" -->
         <activity
             android:name="net.openid.appauth.RedirectUriReceiverActivity"

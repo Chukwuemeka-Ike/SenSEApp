@@ -1,5 +1,6 @@
 package com.circadian.sense.ui.settings
 
+import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -12,6 +13,7 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.MainThread
 import androidx.annotation.WorkerThread
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_LIGHT
@@ -32,7 +34,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 class SettingsFragment : PreferenceFragmentCompat() {
     private val TAG = "SettingsFragment"
-    private val EXTRA_FAILED = "failed"
 
     private lateinit var mAuthStateManager: AuthStateManager
     private lateinit var mAuthService: AuthorizationService
@@ -51,7 +52,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
      *   Registers for an activity result when we launch the CustomTabsIntent
      *   for user to sign in, then continues the authorization based on result
      */
-    private val startForResult = registerForActivityResult(
+    private val startCustomTabsForResult = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
 
@@ -113,7 +114,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         // Logs the user out when clicked
         logoutPreference?.setOnPreferenceClickListener{
-            logOut()
+            createLogOutDialog()
             true
         }
 
@@ -180,7 +181,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             mAuthRequest.get(),
             mAuthIntent.get()
         )
-        startForResult.launch(intent)
+        startCustomTabsForResult.launch(intent)
     }
 
     /**
@@ -437,8 +438,45 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
+
+
+
+
+
     /**
-     * Logs out the user by revoking app access to their data and
+     * Creates the logout dialog and logs user out if they choose yes
+     */
+    @MainThread
+    private fun createLogOutDialog() {
+
+        // Instantiate the logout dialog
+        val logoutDialog: AlertDialog = requireActivity().let {
+            // Create the builder, then set its properties
+            val builder = AlertDialog.Builder(it)
+                .setTitle(getString(R.string.logout_button_label))
+                .setMessage(getString(R.string.logout_dialog_message))
+                .setPositiveButton( // User clicked yes button
+                    getString(R.string.logout_dialog_positive),
+                    DialogInterface.OnClickListener { dialog, id ->
+                        logOut()
+                        Log.i(TAG, "Logout initiated")
+                    })
+                .setNegativeButton( // User cancelled the dialog
+                    getString(R.string.logout_dialog_negative),
+                    DialogInterface.OnClickListener { dialog, id ->
+                        Log.i(TAG, "Clicked no")
+                    })
+
+            // Create the AlertDialog
+            builder.create()
+        }
+
+        // Show the dialog
+        logoutDialog.show()
+    }
+
+    /**
+    * Logs out the user by revoking app access to their data and
      */
     @MainThread
     private fun logOut() {
@@ -484,8 +522,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     this.initializeAppAuth()
                     // Set the login, logout buttons
                     requireActivity().runOnUiThread {
-                        findPreference<Preference?>(getString(R.string.login_pref_tag))?.isEnabled = true
-                        findPreference<Preference?>(getString(R.string.logout_pref_tag))?.isEnabled = false
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.logout_successful),
+                            Toast.LENGTH_SHORT
+                        )
+                        loginPreference?.isEnabled = true
+                        logoutPreference?.isEnabled = false
                     }
                 }
                 else {
@@ -516,6 +559,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
         mAuthStateManager.replace(clearedState)
     }
+
+
+
+
+
 
     /**
      * Display functions

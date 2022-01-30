@@ -62,8 +62,13 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
         withContext(Dispatchers.IO){
             val userData = mDataManager.fetchUserInfo()
-            Log.i(TAG, "Times: ${userData!![0].slice(0..9)}")
-            Log.i(TAG, "Value: ${userData!![1].slice(0..9)}")
+            if (userData != null) {
+                Log.i(TAG, "Times: ${userData!![0].slice(0..9)}")
+                Log.i(TAG, "Value: ${userData!![1].slice(0..9)}")
+            }
+            else{
+                Log.i(TAG, "User data: $userData")
+            }
 
             val elapsed = measureTimeMillis {
                 if (userData != null) {

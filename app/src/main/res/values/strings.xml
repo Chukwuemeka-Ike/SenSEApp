@@ -7,21 +7,24 @@
 
 <!--    Visualization Fragment Strings-->
     <string name="title_visualization">Visualization</string>
+    <string name="filtered_data_checkbox">Filtered Data</string>
+    <string name="raw_data_checkbox">Raw Data</string>
+    <string name="not_authorized_viz_text">The app has not been authorized yet, so we cannot visualize your data. \n\nPlease navigate to settings to log in to Fitbit</string>
+    <string name="optimize_button_label">Optimize Filter</string>
 
 <!--    Settings Fragment Strings-->
     <string name="title_settings">Settings</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="login_pref_tag">login</string>
+    <string name="login_button_label">Log In</string>
     <string name="login_description">Grant SenSE access to your Fitbit data</string>
     <string name="logout_pref_tag">logout</string>
+    <string name="logout_button_label">Log Out</string>
     <string name="logout_description">Log out of your Fitbit account</string>
     <string name="start_auth">Logging in…</string>
-
-<!--    Login Activity Strings-->
-    <string name="login_button_label">Login to Fitbit</string>
-    <string name="retry_button_label">Retry</string>
-    <string name="logout_button_label">Logout</string>
+    <string name="logout_dialog_message">Are you sure?</string>
+    <string name="logout_dialog_positive">Yes</string>
+    <string name="logout_dialog_negative">No</string>
+    <string name="logout_successful">Logged out successfully</string>
 
 <!--    Authorization Workflow Strings-->
     <string name="auth_failed_snack">Authorization failed. Please retry</string>
@@ -37,12 +40,4 @@
 <!--    Fonts-->
     <string name="basic_font">monospace</string>
 
-<!--    Data Req-->
-    <string name="data_request_response_file">mLastDataRequestResponse.json</string>
-    <string name="data_key">activities-heart-intraday</string>
-    <string name="dataset_key">dataset</string>
-    <string name="not_authorized_viz_text">The app has not been authorized yet, so we cannot visualize your data. \n\nPlease navigate to settings to log in to Fitbit</string>
-    <string name="optimize_button_label">Optimize Filter</string>
-    <string name="filtered_data_checkbox">Filtered Data</string>
-    <string name="raw_data_checkbox">Raw Data</string>
 </resources>
