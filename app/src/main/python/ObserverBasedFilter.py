@@ -115,7 +115,7 @@ class ObserverBasedFilter:
             yHat = out[-1,:]
 
             # Compute the output spectrum and corresponding cost
-            filteredSpectrum = self.__computeSpectrum(t, yHat)
+            filteredSpectrum, _, _ = self.__computeSpectrum(t, yHat)
             cost[member] = self.__computeCost(originalSpectrum, filteredSpectrum, f)
         
         # Run the optimization for __max_iterations
@@ -144,7 +144,7 @@ class ObserverBasedFilter:
                 yHat = out[-1,:]
 
                 # Compute the output spectrum and corresponding cost
-                filteredSpectrum = self.__computeSpectrum(t, yHat)
+                filteredSpectrum, _, _ = self.__computeSpectrum(t, yHat)
                 newCost[j] = self.__computeCost(originalSpectrum, filteredSpectrum, f)
             
             # Append the newGen and newCost to allow us work on one array each
@@ -260,7 +260,7 @@ class ObserverBasedFilter:
         N1 = np.argmin(abs(f - (1/24)))
         N2 = np.argmin(abs(f - (0.0289)))
         NN = N1 - N2
-        
+
         # Calculate the square error within the band around each 
         # specified harmonic and the DC term
         J_harmo = np.trapz(np.square((filteredSpectrum[0:NN] - originalSpectrum[0:NN]))) +\

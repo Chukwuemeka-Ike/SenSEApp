@@ -76,7 +76,8 @@ def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     # t, y = parseUserData(inputData)
 
     # Optimize the filter and return the optimal gains
-    return ObserverBasedFilter().optimizeFilter(t, y)
+    # np.array(t),np.array(y)
+    return ObserverBasedFilter().optimizeFilter(t,y)
 
 def parseUserData(inputData: str) -> np.ndarray:
     '''

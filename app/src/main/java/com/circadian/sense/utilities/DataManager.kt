@@ -100,20 +100,16 @@ class DataManager (private val context: Context) {
      * allow any other way to do this)
      *
      */
-    fun fetchTwoWeekData(userId: String, accessToken: String, configuration: Configuration): List<FloatArray>? {
-        if(userId == null || accessToken == null){
-            return null
-        }
+    fun fetchMultiDayData(numDays: Int, userId: String, accessToken: String, configuration: Configuration): List<FloatArray>? {
         val userInfoEndpoint = configuration.getUserInfoEndpointUri()
 
         // Chain together 14 API calls
         val today = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern(datePattern)
-        val twoWeeks = 1..2
+        val twoWeeks = 1..numDays
         val twoWeekData = mutableListOf<List<FloatArray>?>()
-        val nPoints = 2*60*24
-        val t = FloatArray(nPoints)
-        val y = FloatArray(nPoints)
+        val t = mutableListOf<Float>()
+        val y = mutableListOf<Float>()
 
         for (i in twoWeeks){
             val date = today.minusDays(i.toLong()).format(formatter)
@@ -123,23 +119,17 @@ class DataManager (private val context: Context) {
             Log.i(TAG, "Received single day data")
             twoWeekData.add(oneDayData)
             Log.i(TAG, "Added data to list")
-//            val idx = (i*nPoints-nPoints)..(i*nPoints)
-//            oneDayData!![0].copyInto(t.slice(idx).toFloatArray())
-//            oneDayData!![1].copyInto(y.slice(idx).toFloatArray())
-//            Log.i(TAG, "Copied data into y and t. Next iteration")
+            oneDayData!![0].forEach {
+                t.add(it)
+            }
+            oneDayData!![1].forEach {
+                y.add(it)
+            }
+
+            Log.i(TAG, "Copied data into y and t. Next iteration")
         }
 
-//        for (i in twoWeeks){
-//            val idx = (i*nPoints-nPoints)..(i*nPoints)
-//            t.add(twoWeekData[i]?.get(0)!!.)
-//
-//        }
-
-//        twoWeekData[1]?.slice(1..2)
-//        val dd = mutableListOf<FloatArray>()
-
-
-        return listOf(t,y)
+        return listOf(t.toFloatArray(),y.toFloatArray())
     }
 
     private fun fetchDailyData(connectionBuilder: ConnectionBuilder, userDataRequestURL: Uri, accessToken: String): List<FloatArray>? {

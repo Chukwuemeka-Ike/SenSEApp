@@ -90,14 +90,14 @@ class VisualizationFragment : Fragment() {
 //        })
 
         val optimizeButton = binding.optimizeButton
-        vizViewModel.chartData.observe(viewLifecycleOwner, { dataSets ->
+        vizViewModel.chartData.observe(viewLifecycleOwner) { dataSets ->
             loadingContainer.visibility = View.GONE
             chart.visibility = View.VISIBLE
             vizRawData.isEnabled = true
             vizFilterData.isEnabled = true
             chart.data = LineData(dataSets)
             chart.invalidate()
-        })
+        }
 
         optimizeButton.setOnClickListener {
             loadingContainer.visibility = View.VISIBLE
