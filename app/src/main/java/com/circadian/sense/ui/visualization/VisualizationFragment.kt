@@ -60,6 +60,7 @@ class VisualizationFragment : Fragment() {
         vizViewModel = VisualizationViewModel(requireActivity().application)
         _binding = FragmentVisualizationBinding.inflate(inflater, container, false)
         val root: View = binding.root
+        Log.i(TAG, vizViewModel.chartData.value.toString())
 
         mAuthStateManager = AuthStateManager.getInstance(requireContext().applicationContext)
         mConfiguration = Configuration.getInstance(requireContext().applicationContext)

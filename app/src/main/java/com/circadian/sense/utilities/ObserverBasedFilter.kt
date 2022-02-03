@@ -16,7 +16,8 @@ class ObserverBasedFilter {
      * @param [L] - optimal gain array
      * @return filterOutput if successful or null otherwise
      */
-    fun simulateDynamics(t: FloatArray, y: FloatArray, L: FloatArray): MutableList<FloatArray>? {
+    suspend fun simulateDynamics(t: FloatArray, y: FloatArray, L: FloatArray): MutableList<FloatArray>? {
+        Log.i(TAG, "Simulating system dynamics")
         val module = getPythonModule(pythonMainKey)
         return try {
             // Call simulateDynamics function which returns a list of PyObjects arranged:
@@ -48,7 +49,8 @@ class ObserverBasedFilter {
      * @param [y] - raw data array
      * @return [optimalGains] if successful or null otherwise
      */
-    fun optimizeFilter(t: FloatArray, y: FloatArray): FloatArray? {
+    suspend fun optimizeFilter(t: FloatArray, y: FloatArray): FloatArray? {
+        Log.i(TAG, "Optimizing filter")
         val module = getPythonModule(pythonMainKey)
         return try {
             // Call optimizeFilter function which returns a "list" of PyObjects arranged:

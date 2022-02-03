@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.annotation.AnyThread
 import net.openid.appauth.*
 import org.json.JSONException
+import java.lang.Exception
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
@@ -72,6 +73,24 @@ class AuthStateManager private constructor(context: Context) {
         }
         current.update(response)
         return replace(current)
+    }
+
+    /**
+     * Gets user id from mAuthState
+     * @return user_id from mLastTokenResponse or null if there is none
+     */
+    // TODO: Complete this, make better
+    private fun getUserID(): String? {
+        return try{
+            val tokenRequestResult =
+                current.jsonSerialize().getJSONObject("mLastTokenResponse")
+            val dataSet = tokenRequestResult.getJSONObject("additionalParameters")
+            dataSet.getString("user_id")
+        }
+        catch (e: Exception) {
+            Log.e(TAG, "User ID unavailable: ${e}")
+            null
+        }
     }
 
     /**

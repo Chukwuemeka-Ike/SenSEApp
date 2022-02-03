@@ -36,6 +36,7 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
     private lateinit var mAuthService: AuthorizationService
     private lateinit var mOBF: ObserverBasedFilter
     private lateinit var mDataManager: DataManager
+    private lateinit var mOrchestrator: Orchestrator
 
     private val _chartData = MutableLiveData<ArrayList<ILineDataSet>>()
     val chartData: LiveData<ArrayList<ILineDataSet>> = _chartData
@@ -46,54 +47,64 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
     val text: LiveData<String> = _text
 
     init {
+        Log.i(TAG, "Creating VisualizationViewModel")
         mAuthStateManager = AuthStateManager.getInstance(application.applicationContext)
         mConfiguration = Configuration.getInstance(application.applicationContext)
         mAuthService = AuthorizationService(application.applicationContext)
         mOBF = ObserverBasedFilter()
-        mDataManager = DataManager(
+        mDataManager = DataManager(application.applicationContext)
+        mOrchestrator = Orchestrator(
             application.applicationContext,
             mAuthStateManager,
             mConfiguration,
-            mAuthService
+            mAuthService,
+            mDataManager,
+            mOBF
         )
     }
 
     fun runWorkflow(){
         viewModelScope.launch {
         withContext(Dispatchers.IO){
-            val userData = mDataManager.fetchUserInfo()
-            if (userData != null) {
-                Log.i(TAG, "Times: ${userData!![0].slice(0..9)}")
-                Log.i(TAG, "Value: ${userData!![1].slice(0..9)}")
-            }
-            else{
-                Log.i(TAG, "User data: $userData")
-            }
-
-            val elapsed = measureTimeMillis {
-                if (userData != null) {
-                    Log.i(TAG, "Non-null userData")
-                    val t = userData[0]
-                    val y = userData[1]
-
-                    Log.i(TAG, "Optimizing filter")
-                    val L = mOBF.optimizeFilter(t, y)
-
-                    Log.i(TAG, "Simulating dynamics")
-                    val filterOutput: MutableList<FloatArray>? =
-                        mOBF.simulateDynamics(t, y, L!!)
-                    val yHat = filterOutput!!.last()
-                    Log.i(TAG, "yHat in vizModel: ${yHat.slice(0..4)}")
-
-                    val dataSets: ArrayList<ILineDataSet> = createChartDataset(t, y, yHat)
-
-                    withContext(Dispatchers.Main){
-                        // main operation
-                        _chartData.value = dataSets
-                    }
-
-                }
-            }; Log.i(TAG, "Total time taken: $elapsed")
+            Log.i(TAG, "ViewModel thread: ${Thread.currentThread().name}")
+            Log.i(TAG, "AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
+            val data = mOrchestrator.getFreshData()
+            Log.i(TAG, "It didn't all blow up")
+            Log.i(TAG, "${data}")
+//            mDataManager.fetchTwoWeekData(mAuthStateManager.current, mConfiguration)
+//            val userData = mDataManager.fetchUserInfo(mAuthStateManager.current, mConfiguration)
+//            if (userData != null) {
+//                Log.i(TAG, "Times: ${userData!![0].slice(0..9)}")
+//                Log.i(TAG, "Value: ${userData!![1].slice(0..9)}")
+//            }
+//            else{
+//                Log.i(TAG, "User data: $userData")
+//            }
+//
+//            val elapsed = measureTimeMillis {
+//                if (userData != null) {
+//                    Log.i(TAG, "Non-null userData")
+//                    val t = userData[0]
+//                    val y = userData[1]
+//
+//                    Log.i(TAG, "Optimizing filter")
+//                    val L = mOBF.optimizeFilter(t, y)
+//
+//                    Log.i(TAG, "Simulating dynamics")
+//                    val filterOutput: MutableList<FloatArray>? =
+//                        mOBF.simulateDynamics(t, y, L!!)
+//                    val yHat = filterOutput!!.last()
+//                    Log.i(TAG, "yHat in vizModel: ${yHat.slice(0..4)}")
+//
+//                    val dataSets: ArrayList<ILineDataSet> = createChartDataset(t, y, yHat)
+//
+//                    withContext(Dispatchers.Main){
+//                        // main operation
+//                        _chartData.value = dataSets
+//                    }
+//
+//                }
+//            }; Log.i(TAG, "Total time taken: $elapsed")
         }
         }
     }
