@@ -24,16 +24,15 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="0dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/authorized_viz"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="0dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
@@ -67,7 +66,7 @@
                 tools:layout_editor_absoluteX="0dp">
 
                 <CheckBox
-                    android:id="@+id/vizRawData"
+                    android:id="@+id/rawDataCheckBox"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="@dimen/reg_padding"
@@ -75,7 +74,7 @@
                     android:text="@string/raw_data_checkbox" />
 
                 <CheckBox
-                    android:id="@+id/vizFilterData"
+                    android:id="@+id/filteredDataCheckBox"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:layout_marginStart="@dimen/reg_padding"
@@ -84,7 +83,7 @@
             </RadioGroup>
 
             <com.github.mikephil.charting.charts.LineChart
-                android:id="@+id/dataVisualizer"
+                android:id="@+id/visualizationChart"
                 android:layout_width="match_parent"
                 android:layout_height="289dp"
                 android:layout_gravity="center_horizontal"
@@ -124,6 +123,7 @@
                     android:id="@+id/progressBar"
                     android:layout_width="100dp"
                     android:layout_height="100dp"
+                    android:layout_marginBottom="@dimen/big_padding"
                     android:layout_gravity="center_horizontal"/>
             </LinearLayout>
 
@@ -138,7 +138,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/dataVisualizer">
+                app:layout_constraintTop_toBottomOf="@+id/visualizationChart">
 
             </Button>
 

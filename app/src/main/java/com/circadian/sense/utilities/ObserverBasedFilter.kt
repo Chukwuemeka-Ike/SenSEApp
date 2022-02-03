@@ -5,7 +5,7 @@ import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 
 /**
- * ObserverBasedFilter class to organize the filter's main functionalities
+ * ObserverBasedFilter class to organize the filter's two main functionalities
  */
 class ObserverBasedFilter {
     /**
@@ -16,30 +16,31 @@ class ObserverBasedFilter {
      * @param [L] - optimal gain array
      * @return filterOutput if successful or null otherwise
      */
-    suspend fun simulateDynamics(t: FloatArray, y: FloatArray, L: FloatArray): MutableList<FloatArray>? {
+    fun simulateDynamics(t: FloatArray, y: FloatArray, L: FloatArray): MutableList<FloatArray>? {
         Log.i(TAG, "Simulating system dynamics")
-        val module = getPythonModule(pythonMainKey)
         return try {
+            val module = getPythonModule(pythonMainKey)
             // Call simulateDynamics function which returns a list of PyObjects arranged:
             // [x1, x2, x3, ..., yHat]
-            val outputResults = module.callAttr(simulateDynamicsKey, t, y, L).asList()
-            Log.i(TAG, "Output results: $outputResults")
+            val stateDynamics = module.callAttr(simulateDynamicsKey, t, y, L).asList()
+            Log.i(TAG, "Output results: $stateDynamics")
 
             // Convert each row of the output to FloatArrays and add to filterOutput
             val filterOutput = mutableListOf<FloatArray>()
-            for (i in 0 until outputResults.size){
-                filterOutput.add(outputResults[i].toJava(FloatArray::class.java))
+            for (i in 0 until stateDynamics.size){
+                filterOutput.add(stateDynamics[i].toJava(FloatArray::class.java))
             }
 
+            // TODO: Only here for debugging
             val yHat = filterOutput.last()
             Log.i(TAG, "Filter Output: ${yHat.asList().slice(0..4)}")
+
             filterOutput
         }
         catch(e: Exception){
             Log.e(TAG, "${simulateDynamicsKey} failed: ${e}")
             null
         }
-//        return filterOutput
     }
 
     /**
@@ -49,7 +50,7 @@ class ObserverBasedFilter {
      * @param [y] - raw data array
      * @return [optimalGains] if successful or null otherwise
      */
-    suspend fun optimizeFilter(t: FloatArray, y: FloatArray): FloatArray? {
+    fun optimizeFilter(t: FloatArray, y: FloatArray): FloatArray? {
         Log.i(TAG, "Optimizing filter")
         val module = getPythonModule(pythonMainKey)
         return try {
@@ -67,9 +68,14 @@ class ObserverBasedFilter {
         }
     }
 
+    /**
+     * Gets the Python module specified by the moduleKey
+     * @param [moduleKey] - should be set to the Python filename where
+     *                      the target function is defined
+     */
     private fun getPythonModule(moduleKey: String): PyObject {
         val py = Python.getInstance()
-        return py.getModule(moduleKey)           // Python filename where function is defined
+        return py.getModule(moduleKey)
     }
 
     companion object {

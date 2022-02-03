@@ -11,6 +11,8 @@
     <string name="raw_data_checkbox">Raw Data</string>
     <string name="not_authorized_viz_text">The app has not been authorized yet, so we cannot visualize your data. \n\nPlease navigate to settings to log in to Fitbit</string>
     <string name="optimize_button_label">Optimize Filter</string>
+    <string name="y_label">Heart Rate (BPM)</string>
+    <string name="yHat_label">Filtered Output </string>
 
 <!--    Settings Fragment Strings-->
     <string name="title_settings">Settings</string>

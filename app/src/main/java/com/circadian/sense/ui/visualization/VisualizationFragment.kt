@@ -1,7 +1,6 @@
 package com.circadian.sense.ui.visualization
 
-import com.circadian.sense.utilities.Configuration
-import android.content.res.Configuration as resConfiguration
+import android.app.Application
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -9,34 +8,26 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.CheckBox
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
-import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
-import com.circadian.sense.FilterData
-import com.circadian.sense.FilterDataRepository
-import com.circadian.sense.MainApplication
+import androidx.fragment.app.activityViewModels
 import com.circadian.sense.R
 import com.circadian.sense.databinding.FragmentVisualizationBinding
-import com.circadian.sense.utilities.*
+import com.circadian.sense.utilities.AuthStateManager
+import com.circadian.sense.utilities.Configuration
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
-import com.github.mikephil.charting.utils.Utils
-import kotlinx.coroutines.*
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import android.content.res.Configuration as resConfiguration
 
 class VisualizationFragment : Fragment() {
 
-    val TAG = "VisualizationFragment"
+    private val TAG = "VisualizationFragment"
 
-    private lateinit var vizViewModel: VisualizationViewModel
+    private val vizViewModel: VisualizationViewModel by activityViewModels()
     private var _binding: FragmentVisualizationBinding? = null
 
     // This property is only valid between onCreateView and onDestroyView
@@ -45,10 +36,8 @@ class VisualizationFragment : Fragment() {
     private lateinit var mAuthStateManager: AuthStateManager
     private lateinit var mConfiguration: Configuration
 
-    private lateinit var chart: LineChart
-    private lateinit var loadingContainer: LinearLayout
-    private lateinit var rawDataset: LineDataSet
-    private lateinit var filterDataset: LineDataSet
+    private lateinit var mVizChart: LineChart
+    private lateinit var mChartDataSets: ArrayList<ILineDataSet>
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -56,54 +45,22 @@ class VisualizationFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
 
-        // Set the ViewModel and ViewBinding
-        vizViewModel = VisualizationViewModel(requireActivity().application)
+//        vizViewModel = VisualizationViewModel(requireActivity().application)
+        Log.i(TAG, vizViewModel.chartData.value.toString())
+
+        // Set the ViewBinding
         _binding = FragmentVisualizationBinding.inflate(inflater, container, false)
         val root: View = binding.root
-        Log.i(TAG, vizViewModel.chartData.value.toString())
 
         mAuthStateManager = AuthStateManager.getInstance(requireContext().applicationContext)
         mConfiguration = Configuration.getInstance(requireContext().applicationContext)
 
-        // The chart for data visualization
-        chart = binding.dataVisualizer
-//        chart.visibility = View.GONE
-//        createVisualizationChart()
-
-        loadingContainer = binding.loadingContainer
-        loadingContainer.visibility = View.GONE
-
         // Checkboxes that allow user choose which data is visible on the graph
-        val vizRawData = binding.vizRawData
-        val vizFilterData = binding.vizFilterData
-
-        vizRawData.isEnabled = false
-        vizFilterData.isEnabled = false
-        vizRawData.isChecked = true
-        vizFilterData.isChecked = true
-//        vizRawData.setOnClickListener { makeDataVisible(vizRawData) }
-//        vizFilterData.setOnClickListener { makeDataVisible(vizFilterData) }
-
-//        val textView: TextView = binding.textVisualization
-//        visualizationViewModel.text.observe(viewLifecycleOwner, Observer {
-//            textView.text = it
-//        })
-
-        val optimizeButton = binding.optimizeButton
-        vizViewModel.chartData.observe(viewLifecycleOwner) { dataSets ->
-            loadingContainer.visibility = View.GONE
-            chart.visibility = View.VISIBLE
-            vizRawData.isEnabled = true
-            vizFilterData.isEnabled = true
-            chart.data = LineData(dataSets)
-            chart.invalidate()
-        }
-
-        optimizeButton.setOnClickListener {
-            loadingContainer.visibility = View.VISIBLE
-            chart.visibility = View.GONE
-            vizViewModel.runWorkflow()
-        }
+        val rawDataCheckBox = binding.rawDataCheckBox
+        val filteredDataCheckBox = binding.filteredDataCheckBox
+        val optimizeButton = binding.optimizeButton     // Optimize button
+        val loadingContainer = binding.loadingContainer     // Loading container with progress bar
+        mVizChart = binding.visualizationChart           // The chart for data visualization
 
         if (mAuthStateManager.current.isAuthorized && !mConfiguration.hasConfigurationChanged()){
             displayAuthorized()
@@ -112,38 +69,46 @@ class VisualizationFragment : Fragment() {
             displayNotAuthorized()
         }
 
-//        val job = Job()
-//        val uiScope = CoroutineScope(Dispatchers.Main + job)
-//
-//        visualizationViewModel.allData.observe(viewLifecycleOwner, { allData ->
-//            textView.text = allData?.toString()
-////            if(allData != null) {
-////                Log.i(TAG, "${allData[0]!!.t} ${allData[0]!!.y} ${allData[0]!!.yHat}")
-////            }
-////            drawChartData(allData)
-//            if(allData != null && allData.isNotEmpty()) {
-//                Log.i(TAG, "allData populated!")
-//                uiScope.launch(Dispatchers.IO){
-//                    //asyncOperation
-//                    populateChartData(allData)
-//                    withContext(Dispatchers.Main){
-//                        //ui operation
-//                        chart.visibility = View.VISIBLE
-//                        loadingContainer.visibility = View.GONE
-//                    }
-//
-//                }
-//            }
-//        })
+        // Preliminary view setup
+        loadingContainer.visibility = View.GONE
+        rawDataCheckBox.isEnabled = false
+        filteredDataCheckBox.isEnabled = false
+        rawDataCheckBox.setOnClickListener {
+            makeDataVisible(rawDataCheckBox)
+        }
+        filteredDataCheckBox.setOnClickListener {
+            makeDataVisible(filteredDataCheckBox)
+        }
 
-//            val job = Job()
-//            val uiScope = CoroutineScope(Dispatchers.IO + job)
-//            uiScope.launch(Dispatchers.IO){
-//                displayLoading()
-////                optimizeButton.isEnabled = false
-//                updateChartData()
-////                optimizeButton.isEnabled = true
-//            }
+        // Observe the data we need for mVizChart
+        vizViewModel.filterData.observe(viewLifecycleOwner) {
+            loadingContainer.visibility = View.GONE     // Hide the loading container
+
+            // Enable the checkboxes and set them to whether their corresponding data is visible
+            // Useful for retaining their state on fragment switches
+            rawDataCheckBox.isEnabled = true
+            filteredDataCheckBox.isEnabled = true
+            Log.i(TAG, "${it.t.slice(1..3)}")
+            mChartDataSets = createChartDataset(it.t, it.y, it.yHat)
+            rawDataCheckBox.isChecked = mChartDataSets[0].isVisible
+            filteredDataCheckBox.isChecked = mChartDataSets[1].isVisible
+
+
+
+//            rawDataCheckBox.isChecked = it[0].isVisible
+//            filteredDataCheckBox.isChecked = it[1].isVisible
+//
+//            // Populate this.mChartDataSets with the liveDataset and draw mVizChart
+//            mChartDataSets = it
+            mVizChart.data = LineData(mChartDataSets)
+            mVizChart.invalidate()
+        }
+
+        optimizeButton.setOnClickListener {
+            loadingContainer.visibility = View.VISIBLE
+            mVizChart.setNoDataText("") // Empty string
+            vizViewModel.runWorkflow()
+        }
 
         return root
     }
@@ -163,214 +128,113 @@ class VisualizationFragment : Fragment() {
     private fun displayNotAuthorized() {
         binding.authorizedViz.visibility = View.GONE
         binding.notAuthorizedViz.visibility = View.VISIBLE
-        Toast.makeText(requireContext().applicationContext, "User is not authorized", Toast.LENGTH_SHORT)
+        Toast.makeText(
+            requireContext().applicationContext,
+            "User is not authorized",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     /**
      *
      */
     private fun createVisualizationChart(){
-        chart.description.isEnabled = false
-        chart.setDrawGridBackground(false)
-        chart.isDragEnabled = true
-        chart.setScaleEnabled(true)
-        chart.setPinchZoom(false)
+        mVizChart.description.isEnabled = false
+        mVizChart.setDrawGridBackground(false)
+        mVizChart.isDragEnabled = true
+        mVizChart.setScaleEnabled(true)
+        mVizChart.setPinchZoom(false)
+        mVizChart.animateXY(100, 100)
 
         val tf = Typeface.SANS_SERIF
-        val l = chart.legend
+        val l = mVizChart.legend
         l.typeface = tf
 
-        val leftAxis = chart.axisLeft
+        val leftAxis = mVizChart.axisLeft
         leftAxis.typeface = tf
 
-        chart.axisRight.isEnabled = false
+        mVizChart.axisRight.isEnabled = false
 
-        val xAxis = chart.xAxis
+        val xAxis = mVizChart.xAxis
         xAxis.isEnabled = true
         xAxis.typeface = tf
 
         val nightMod =
             requireActivity().resources.configuration.uiMode and resConfiguration.UI_MODE_NIGHT_MASK
         if (nightMod == resConfiguration.UI_MODE_NIGHT_YES) {
-            chart.setBackgroundColor(Color.BLACK)
-            chart.axisLeft.textColor = Color.WHITE
-            chart.xAxis.textColor = Color.WHITE
-            chart.legend.textColor = Color.WHITE
+            mVizChart.setBackgroundColor(Color.BLACK)
+            mVizChart.axisLeft.textColor = Color.WHITE
+            mVizChart.xAxis.textColor = Color.WHITE
+            mVizChart.legend.textColor = Color.WHITE
         } else {
-            chart.setBackgroundColor(Color.WHITE)
-            chart.axisLeft.textColor = Color.BLACK
-            chart.xAxis.textColor = Color.BLACK
-            chart.legend.textColor = Color.BLACK
+            mVizChart.setBackgroundColor(Color.WHITE)
+            mVizChart.axisLeft.textColor = Color.BLACK
+            mVizChart.xAxis.textColor = Color.BLACK
+            mVizChart.legend.textColor = Color.BLACK
         }
     }
 
-//    /**
-//     * Makes the data visible according to whether each checkbox is checked
-//     * params:
-//     * [v]
-//     */
-//    private fun makeDataVisible(v:View){
-//        when (v.id){
-//            R.id.vizFilterData -> {
-//                filterDataset!!.isVisible = binding.vizFilterData.isChecked
-//            }
-//            R.id.vizRawData ->{
-//                rawDataset!!.isVisible = binding.vizRawData.isChecked
-//            }
-//        }
-//        chart.invalidate()
-//    }
+    /**
+     * Makes the data visible according to whether each checkbox is checked
+     * params:
+     * [v] - the checkbox that was checked
+     */
+    private fun makeDataVisible(v:CheckBox){
+        when (v.id){
+            R.id.filteredDataCheckBox -> {
+                mChartDataSets[1].isVisible = binding.filteredDataCheckBox.isChecked
+            }
+            R.id.rawDataCheckBox ->{
+                mChartDataSets[0].isVisible = binding.rawDataCheckBox.isChecked
+//                if (!binding.rawDataCheckBox.isChecked){
+//                    mChartDataSets[1].setDrawFilled(true)
+////                    mChartDataSets[1].fillColor = 2
+//                }
+            }
+        }
+        mVizChart.invalidate()
+    }
 
+    /**
+     * Creates a the chart dataset given t, y, and yHat
+     * @param [t] - vector of times in hours from first time point
+     * @param [y] - vector of raw biometric values
+     * @param [yHat] - vector of filtered biometric values
+     * @return [dataSets] - pair of ILineDataSets that can be plotted by MPAndroidChart
+     */
+    private fun createChartDataset(
+        t: FloatArray,
+        y: FloatArray,
+        yHat: FloatArray
+    ): ArrayList<ILineDataSet> {
+        val rawDataEntries = mutableListOf<Entry>()
+        val filterDataEntries = mutableListOf<Entry>()
+        for(entry in t.indices){
+            rawDataEntries.add(Entry(t[entry], y[entry]))
+            filterDataEntries.add(Entry(t[entry], yHat[entry]))
+        }
 
-//    suspend fun populateChartData(allData: List<FilterData>) = withContext(Dispatchers.IO) {
-//        val dataB = convertDataBaseToFloatArray(allData)
-//        val t = dataB?.get(0)
-//        val y = dataB?.get(1)
-////            val t = floatArrayOf(0f, 0.1f, 0.2f, 0.3f, .4f, .5f, .6f, .7f, .8f)
-////            val y = floatArrayOf(65f, 62f, 67f, 65f, 62f, 67f, 65f, 62f, 67f)
-////        val L = floatArrayOf(0f, 0.002f, 0.09f)
-//        if (t != null && y != null) {
-//            val L = mOBF.optimizeFilter(t, y)
-//            val filterOutput = mOBF.simulateDynamics(t, y, L!!)
-//            val yHat = filterOutput!!.last()
-//            val chartData = mutableListOf<FilterData>()
-//            for (i in allData.indices){
-//                chartData.add(FilterData(t[i], y[i], yHat[i]))
-//            }
-//            drawChartData(chartData)
-//        }
-//    }
-//
-//    private fun convertDataBaseToFloatArray(allData: List<FilterData>): List<FloatArray>? {
-//        return try {
-//            val t =  FloatArray(allData.size)
-//            val y = FloatArray(allData.size)
-//            for (i in allData.indices){
-//                y[i] = allData[i].y
-//                t[i] = allData[i].t
-//            }
-//            listOf<FloatArray>(t, y)
-//        }
-//        catch (e: Exception){
-//            Log.i(TAG, "$e")
-//            null
-//        }
-//    }
-//
-//    private fun drawChartData(allData: List<FilterData>?) {
-//        if(allData != null && allData.isNotEmpty()){
-//            // Load raw user data
-//            val rawDataEntries = mutableListOf<Entry>()
-//            val filterDataEntries = mutableListOf<Entry>()
-//            for(entry in allData.indices){
-//                rawDataEntries.add(Entry(allData[entry].t, allData[entry].y))
-//                filterDataEntries.add(Entry(allData[entry].t, allData[entry].yHat))
-//            }
-//
-//            rawDataset = LineDataSet(rawDataEntries, "Heart Rate")
-//            rawDataset.color = Color.MAGENTA
-//            rawDataset.setDrawCircles(false)
-//
-//            filterDataset = LineDataSet(filterDataEntries, "Filtered Output")
-//            filterDataset.color = Color.RED
-//            filterDataset.setDrawCircles(false)
-//
-//            val dataSets: ArrayList<ILineDataSet> = ArrayList()
-//            dataSets.add(rawDataset)
-//            dataSets.add(filterDataset)
-//            chart.data = LineData(dataSets)
-//            // Refresh the drawing
-//            chart.invalidate()
-//
-//        }
-//    }
-//
-//    private fun displayLoading() {
-//
-//    }
-//
-////    suspend fun updateChartData(){
-////        Log.i(TAG, "Optimizing filter")
-////        mOBF.optimizeFilter()
-////        Log.i(TAG, "Simulating dynamics")
-////        val yHat = mOBF.simulateDynamics().last()
-////
-////        // Load raw user data
-////        val rawData = parseUserData(mUtils.loadJSONData(mUserDataFile))
-////
-////        val rawDataEntries = mutableListOf<Entry>()
-////        val filterDataEntries = mutableListOf<Entry>()
-////        for (i in 0 until rawData.times.size) {
-////            rawDataEntries.add(Entry(rawData.times[i], rawData.values[i]))
-////            filterDataEntries.add(Entry(rawData.times[i], yHat[i]))
-////        }
-////        rawDataset = LineDataSet(rawDataEntries, "Heart Rate")
-////        rawDataset.color = Color.MAGENTA
-////        rawDataset.setDrawCircles(false)
-////
-////        filterDataset = LineDataSet(filterDataEntries, "Filtered Output")
-////        filterDataset.color = Color.RED
-////        filterDataset.setDrawCircles(false)
-////
-////        val dataSets: ArrayList<ILineDataSet> = ArrayList()
-////        dataSets.add(rawDataset)
-////        dataSets.add(filterDataset)
-////        chart.data = LineData(dataSets)
-////
-////        // Refresh the drawing
-////        chart.invalidate()
-////    }
+        val rawDataset = LineDataSet(
+            rawDataEntries,
+            // TODO: fix this
+            getString(R.string.y_label)
+        )
+        rawDataset.color = Color.RED
+        rawDataset.setDrawCircles(false)
 
+        val filterDataset = LineDataSet(
+            filterDataEntries,
+            // TODO: fix this
+            getString(R.string.yHat_label)
+        )
+        filterDataset.color = Color.MAGENTA
+        filterDataset.setDrawCircles(false)
 
-    companion object {
-        private const val timesKey = "t"
-        private const val valuesKey = "y"
-        private const val mDatasetKey = "dataset"
-        private const val mActivitiesIntradayKey = "activities-heart-intraday"
-        data class DataSignal(var times: FloatArray, var values: FloatArray)
-        private val mUserDataFile = "rawUserData.json"
+        val dataSets: ArrayList<ILineDataSet> = ArrayList()
+        dataSets.add(0, rawDataset)
+        dataSets.add(1, filterDataset)
+
+        return dataSets
     }
 
 }
-
-
-
-//////***********************************************************************************************
-///// RECYCLING
-
-
-////        val rawData = mOBF.loadUserData()
-//////        val L = floatArrayOf(0.0001242618548789415f, 0.0019148682768328732f, 0.09530636024613613f)
-//////        val filterOutput = mOBF.simulateDynamics(L)
-//////        val y = filterOutput.last()
-//////        Log.i(tag, "y: $y")
-////
-////        // Testing Utils
-////        val utils = Utils(requireActivity().applicationContext)
-////        val y = utils.loadJSONData("filterOutput.json").getJSONArray("y")
-//////        val y = filterOutput.getJSONArray("y")
-//////        val y1 = y.getDouble(0)
-////        Log.i(TAG, "Saved output: ${y}")
-//////        Log.i(TAG, "Output type: ${y1}")
-////
-//val rawDataEntries = mutableListOf<Entry>()
-////        val filterDataEntries = mutableListOf<Entry>()
-//for (i in 0 until rawData.times.size) {
-//    rawDataEntries.add(Entry(UserDataManager.rawData.times[i], UserDataManager.rawData.values[i]))
-////            filterDataEntries.add(Entry(rawData.times[i], y.getDouble(i).toFloat()))
-//}
-//rawDataset = LineDataSet(rawDataEntries, "Heart Rate")
-//rawDataset.color = Color.MAGENTA
-//rawDataset.setDrawCircles(false)
-//
-////        filterDataset = LineDataSet(filterDataEntries, "Filtered Output")
-////        filterDataset.color = Color.RED
-////        filterDataset.setDrawCircles(false)
-//
-//val dataSets: ArrayList<ILineDataSet> = ArrayList()
-//dataSets.add(rawDataset)
-////        dataSets.add(filterDataset)
-//chart.data = LineData(dataSets)
-//
-//// Refresh the drawing
-//chart.invalidate()

@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.circadian.sense.R
 import com.circadian.sense.utilities.*
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineDataSet
@@ -29,10 +30,8 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
     private val _chartData = MutableLiveData<ArrayList<ILineDataSet>>()
     val chartData: LiveData<ArrayList<ILineDataSet>> = _chartData
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "Data Visualization"
-    }
-    val text: LiveData<String> = _text
+    private val _filterData = MutableLiveData<DataPack>()
+    val filterData: LiveData<DataPack> = _filterData
 
     init {
         Log.i(TAG, "Creating VisualizationViewModel")
@@ -60,12 +59,15 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
                     Log.i(TAG, "It didn't all blow up")
                     Log.i(TAG, "${data}")
                     if (data != null) {
-                        val dataSets: ArrayList<ILineDataSet> =
-                            createChartDataset(data.t, data.y, data.yHat)
-                            withContext(Dispatchers.Main){
-                                // main operation
-                                _chartData.value = dataSets
-                            }
+                        withContext(Dispatchers.Main) {
+                            _filterData.value = data!!
+                        }
+//                        val dataSets: ArrayList<ILineDataSet> =
+//                            createChartDataset(data.t, data.y, data.yHat)
+//                            withContext(Dispatchers.Main){
+//                                // main operation
+//                                _chartData.value = dataSets
+//                            }
                     }
                 }; Log.i(TAG, "Total time taken: $elapsed")
             }
@@ -74,10 +76,10 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
 
     /**
      * Creates a the chart dataset given t, y, and yHat
-     * @param [t]
-     * @param [y]
-     * @param [yHat]
-     * @return [dataSets]
+     * @param [t] - vector of times in hours from first time point
+     * @param [y] - vector of raw biometric values
+     * @param [yHat] - vector of filtered biometric values
+     * @return [dataSets] - pair of ILineDataSets that can be plotted by MPAndroidChart
      */
     private fun createChartDataset(
         t: FloatArray,
@@ -91,12 +93,20 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
             filterDataEntries.add(Entry(t[entry], yHat[entry]))
         }
 
-        val rawDataset = LineDataSet(rawDataEntries, "Heart Rate")
-        rawDataset.color = Color.MAGENTA
+        val rawDataset = LineDataSet(
+            rawDataEntries,
+            // TODO: fix this
+            getApplication<Application>().resources.getString(R.string.y_label)
+        )
+        rawDataset.color = Color.RED
         rawDataset.setDrawCircles(false)
 
-        val filterDataset = LineDataSet(filterDataEntries, "Filtered Output")
-        filterDataset.color = Color.RED
+        val filterDataset = LineDataSet(
+            filterDataEntries,
+            // TODO: fix this
+            getApplication<Application>().resources.getString(R.string.yHat_label)
+        )
+        filterDataset.color = Color.MAGENTA
         filterDataset.setDrawCircles(false)
 
         val dataSets: ArrayList<ILineDataSet> = ArrayList()
