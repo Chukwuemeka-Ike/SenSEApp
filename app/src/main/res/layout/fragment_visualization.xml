@@ -37,38 +37,23 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
-            <TextView
-                android:id="@+id/text_visualization"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/reg_padding"
-                android:layout_marginTop="@dimen/big_padding"
-                android:layout_marginEnd="@dimen/reg_padding"
-                android:fontFamily="@string/basic_font"
-                android:textAlignment="center"
-                android:textSize="20sp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.0"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
             <RadioGroup
-                android:id="@+id/radioGroupMetricSelection"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginStart="@dimen/reg_padding"
+                android:id="@+id/checkBoxGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/big_padding"
                 android:layout_marginTop="@dimen/big_padding"
+                android:layout_marginStart="@dimen/reg_padding"
                 android:layout_marginEnd="@dimen/reg_padding"
                 android:gravity="center"
                 android:orientation="horizontal"
-                app:layout_constraintTop_toBottomOf="@+id/text_visualization"
-                tools:layout_editor_absoluteX="0dp">
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
 
                 <CheckBox
                     android:id="@+id/rawDataCheckBox"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/reg_padding"
                     android:layout_marginEnd="@dimen/reg_padding"
                     android:fontFamily="@string/basic_font"
                     android:text="@string/raw_data_checkbox" />
@@ -78,22 +63,32 @@
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:layout_marginStart="@dimen/reg_padding"
+                    android:layout_marginEnd="@dimen/reg_padding"
                     android:fontFamily="@string/basic_font"
                     android:text="@string/filtered_data_checkbox" />
             </RadioGroup>
 
+            <Button
+                android:id="@+id/maximizeButton"
+                android:layout_width="@dimen/big_padding"
+                android:layout_height="@dimen/big_padding"
+                android:layout_marginTop="@dimen/big_padding"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:layout_marginEnd="@dimen/reg_padding"
+                android:background="@drawable/ic_baseline_open_in_full_24_dark"
+                android:contentDescription="@string/maximize_button_name" />
+
             <com.github.mikephil.charting.charts.LineChart
                 android:id="@+id/visualizationChart"
                 android:layout_width="match_parent"
-                android:layout_height="289dp"
+                android:layout_height="339dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginStart="@dimen/reg_padding"
-                android:layout_marginTop="@dimen/big_padding"
                 android:layout_marginEnd="@dimen/reg_padding"
-                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/radioGroupMetricSelection"
-                app:layout_constraintBottom_toTopOf="@id/optimize_button"/>
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/checkBoxGroup"/>
 
             <LinearLayout
                 android:id="@+id/loading_container"
@@ -101,14 +96,13 @@
                 android:layout_gravity="center_horizontal"
                 android:gravity="center"
                 android:layout_width="match_parent"
-                android:layout_height="289dp"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/reg_padding"
-                android:layout_marginTop="@dimen/big_padding"
                 android:layout_marginEnd="@dimen/reg_padding"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/radioGroupMetricSelection"
-                app:layout_constraintBottom_toTopOf="@id/optimize_button">
+                app:layout_constraintTop_toTopOf="@id/visualizationChart"
+                app:layout_constraintBottom_toBottomOf="@id/visualizationChart">
 
                 <TextView
                     android:id="@+id/loading_description"

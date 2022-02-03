@@ -1,6 +1,7 @@
 package com.circadian.sense.ui.visualization
 
 import android.app.Application
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -46,7 +47,7 @@ class VisualizationFragment : Fragment() {
     ): View? {
 
 //        vizViewModel = VisualizationViewModel(requireActivity().application)
-        Log.i(TAG, vizViewModel.chartData.value.toString())
+        Log.i(TAG, vizViewModel.filterData.value.toString())
 
         // Set the ViewBinding
         _binding = FragmentVisualizationBinding.inflate(inflater, container, false)
@@ -60,6 +61,7 @@ class VisualizationFragment : Fragment() {
         val filteredDataCheckBox = binding.filteredDataCheckBox
         val optimizeButton = binding.optimizeButton     // Optimize button
         val loadingContainer = binding.loadingContainer     // Loading container with progress bar
+        val maximizeButton = binding.maximizeButton
         mVizChart = binding.visualizationChart           // The chart for data visualization
 
         if (mAuthStateManager.current.isAuthorized && !mConfiguration.hasConfigurationChanged()){
@@ -67,6 +69,15 @@ class VisualizationFragment : Fragment() {
         }
         else {
             displayNotAuthorized()
+        }
+
+        // Set the maximize button according to the user theme
+        val nightMod =
+            this.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        if (nightMod == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
+            maximizeButton.setBackgroundResource(R.drawable.ic_baseline_open_in_full_24_light)
+        } else {
+            maximizeButton.setBackgroundResource(R.drawable.ic_baseline_open_in_full_24_dark)
         }
 
         // Preliminary view setup
@@ -80,34 +91,42 @@ class VisualizationFragment : Fragment() {
             makeDataVisible(filteredDataCheckBox)
         }
 
-        // Observe the data we need for mVizChart
-        vizViewModel.filterData.observe(viewLifecycleOwner) {
-            loadingContainer.visibility = View.GONE     // Hide the loading container
-
-            // Enable the checkboxes and set them to whether their corresponding data is visible
-            // Useful for retaining their state on fragment switches
-            rawDataCheckBox.isEnabled = true
-            filteredDataCheckBox.isEnabled = true
-            Log.i(TAG, "${it.t.slice(1..3)}")
-            mChartDataSets = createChartDataset(it.t, it.y, it.yHat)
-            rawDataCheckBox.isChecked = mChartDataSets[0].isVisible
-            filteredDataCheckBox.isChecked = mChartDataSets[1].isVisible
-
-
-
-//            rawDataCheckBox.isChecked = it[0].isVisible
-//            filteredDataCheckBox.isChecked = it[1].isVisible
-//
-//            // Populate this.mChartDataSets with the liveDataset and draw mVizChart
-//            mChartDataSets = it
-            mVizChart.data = LineData(mChartDataSets)
-            mVizChart.invalidate()
-        }
-
         optimizeButton.setOnClickListener {
             loadingContainer.visibility = View.VISIBLE
             mVizChart.setNoDataText("") // Empty string
-            vizViewModel.runWorkflow()
+            vizViewModel.runWorkflow()  //
+        }
+
+        maximizeButton.setOnClickListener {
+            startActivity(
+                Intent(
+                    requireContext(), VisualizationActivity::class.java
+                )//.putExtra("dd", vizViewModel.filterData)
+            )
+//            val intent = Intent(this, VisualizationActivity::class.java).apply {
+//                putExtra(EXTRA_MESSAGE, response)
+//            }
+//            startActivity(intent)
+        }
+
+        // Observe the data we need for mVizChart
+        vizViewModel.filterData.observe(viewLifecycleOwner) {
+            // Hide the loading container
+            loadingContainer.visibility = View.GONE
+
+            // Populate this.mChartDataSets with the LiveData value
+            mChartDataSets = createChartDataset(it.t, it.y, it.yHat)
+
+            // Enable the checkboxes and set them to whether their corresponding data is visible -
+            // useful for retaining their state on fragment switches
+            rawDataCheckBox.isEnabled = true
+            filteredDataCheckBox.isEnabled = true
+            rawDataCheckBox.isChecked = mChartDataSets[0].isVisible
+            filteredDataCheckBox.isChecked = mChartDataSets[1].isVisible
+
+            // Draw the chart
+            mVizChart.data = LineData(mChartDataSets)
+            mVizChart.invalidate()
         }
 
         return root
@@ -118,21 +137,26 @@ class VisualizationFragment : Fragment() {
         _binding = null
     }
 
+    /**
+     *
+     */
     private fun displayAuthorized() {
         binding.authorizedViz.visibility = View.VISIBLE
         binding.notAuthorizedViz.visibility = View.GONE
-
         createVisualizationChart()
     }
 
+    /**
+     *
+     */
     private fun displayNotAuthorized() {
         binding.authorizedViz.visibility = View.GONE
         binding.notAuthorizedViz.visibility = View.VISIBLE
-        Toast.makeText(
-            requireContext().applicationContext,
-            "User is not authorized",
-            Toast.LENGTH_SHORT
-        ).show()
+//        Toast.makeText(
+//            requireContext().applicationContext,
+//            "User is not authorized",
+//            Toast.LENGTH_SHORT
+//        ).show()
     }
 
     /**
@@ -177,7 +201,7 @@ class VisualizationFragment : Fragment() {
     /**
      * Makes the data visible according to whether each checkbox is checked
      * params:
-     * [v] - the checkbox that was checked
+     * [v] - the checkbox that was clicked
      */
     private fun makeDataVisible(v:CheckBox){
         when (v.id){
@@ -186,10 +210,6 @@ class VisualizationFragment : Fragment() {
             }
             R.id.rawDataCheckBox ->{
                 mChartDataSets[0].isVisible = binding.rawDataCheckBox.isChecked
-//                if (!binding.rawDataCheckBox.isChecked){
-//                    mChartDataSets[1].setDrawFilled(true)
-////                    mChartDataSets[1].fillColor = 2
-//                }
             }
         }
         mVizChart.invalidate()
@@ -207,6 +227,7 @@ class VisualizationFragment : Fragment() {
         y: FloatArray,
         yHat: FloatArray
     ): ArrayList<ILineDataSet> {
+
         val rawDataEntries = mutableListOf<Entry>()
         val filterDataEntries = mutableListOf<Entry>()
         for(entry in t.indices){
@@ -216,19 +237,18 @@ class VisualizationFragment : Fragment() {
 
         val rawDataset = LineDataSet(
             rawDataEntries,
-            // TODO: fix this
             getString(R.string.y_label)
         )
-        rawDataset.color = Color.RED
+        rawDataset.color = Color.MAGENTA
         rawDataset.setDrawCircles(false)
 
         val filterDataset = LineDataSet(
             filterDataEntries,
-            // TODO: fix this
             getString(R.string.yHat_label)
         )
-        filterDataset.color = Color.MAGENTA
+        filterDataset.color = Color.RED
         filterDataset.setDrawCircles(false)
+//        filterDataset.setDrawFilled(true)
 
         val dataSets: ArrayList<ILineDataSet> = ArrayList()
         dataSets.add(0, rawDataset)

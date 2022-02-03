@@ -34,6 +34,7 @@ class Orchestrator(
         val filterData = mDataManager.loadData()
         val today = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val todayString = today.format(formatter)
         val yesterday = today.minusDays(1).format(formatter)
         val weekAgo = today.minusDays(7).format(formatter)
         var newData: List<FloatArray>? = null
@@ -56,7 +57,7 @@ class Orchestrator(
             Log.i(TAG, "Received data: ${t.asList()}")
             Log.i(TAG, "Received data: ${newData!![1].asList()}")
             val L = mOBF.optimizeFilter(t, newData!![1])
-            return finishUp(t, newData!![1], L!!)
+            return finishUp(t, newData!![1], todayString, L!!, todayString)
         }
         // If the data is not up to date, request new data
         else if (filterData.dataTimestamp < yesterday){
@@ -77,24 +78,25 @@ class Orchestrator(
             // If gains are fresh, finishUp
             if (filterData.gainsTimestamp > weekAgo){
                 Log.i(TAG, "Fresh gains, finishing up")
-                return finishUp(t, newData!![1], filterData.gains)
+                return finishUp(t, newData!![1], todayString, filterData.gains, filterData.gainsTimestamp)
             }
             else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
                 val L = mOBF.optimizeFilter(t, newData!![1])
-                return finishUp(t, newData!![1], L!!)
+                return finishUp(t, newData!![1], todayString, L!!, todayString)
             }
         }
         else {
+            Log.i(TAG, "Fresh saved data.")
             // If gains are fresh, finishUp
             if (filterData.gainsTimestamp > weekAgo){
                 Log.i(TAG, "Fresh gains, finishing up")
-                return finishUp(filterData.t, filterData.y, filterData.gains)
+                return finishUp(filterData.t, filterData.y, filterData.dataTimestamp, filterData.gains, filterData.gainsTimestamp)
             }
             else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
                 val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-                return finishUp(filterData.t, filterData.y, L!!)
+                return finishUp(filterData.t, filterData.y, filterData.dataTimestamp, L!!, todayString)
             }
         }
 
@@ -143,16 +145,19 @@ class Orchestrator(
         }
 
 
-    private suspend fun finishUp(t: FloatArray, y: FloatArray, L: FloatArray): DataPack? {
+    /**
+     *
+     */
+    private fun finishUp(t: FloatArray, y: FloatArray, dataTimestamp: String, L: FloatArray, gainsTimestamp: String): DataPack? {
         Log.i(TAG, "Finishing up")
         return try {
-            val today = LocalDateTime.now()
-            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-            val yesterday = today.minusDays(1).format(formatter)
+//            val today = LocalDateTime.now()
+//            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+//            val yesterday = today.minusDays(1).format(formatter)
 
             val yHat = mOBF.simulateDynamics(t, y, L)!!.last()
 
-            val data = DataPack(t, y, yHat, yesterday, L, today. format(formatter))
+            val data = DataPack(t, y, yHat, dataTimestamp, L, gainsTimestamp)
 
             // Save the data to file
             mDataManager.writeData(data)
@@ -164,7 +169,6 @@ class Orchestrator(
         }
 
     }
-
 
     companion object{
         private const val TAG = "Orchestrator"
