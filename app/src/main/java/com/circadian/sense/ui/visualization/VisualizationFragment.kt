@@ -47,7 +47,7 @@ class VisualizationFragment : Fragment() {
     ): View? {
 
 //        vizViewModel = VisualizationViewModel(requireActivity().application)
-        Log.i(TAG, vizViewModel.filterData.value.toString())
+        Log.i(TAG, vizViewModel.chartData.value.toString())
 
         // Set the ViewBinding
         _binding = FragmentVisualizationBinding.inflate(inflater, container, false)
@@ -92,8 +92,8 @@ class VisualizationFragment : Fragment() {
         }
 
         optimizeButton.setOnClickListener {
-            loadingContainer.visibility = View.VISIBLE
             mVizChart.setNoDataText("") // Empty string
+            loadingContainer.visibility = View.VISIBLE
             vizViewModel.runWorkflow()  //
         }
 
@@ -110,21 +110,19 @@ class VisualizationFragment : Fragment() {
         }
 
         // Observe the data we need for mVizChart
-        vizViewModel.filterData.observe(viewLifecycleOwner) {
+        vizViewModel.chartData.observe(viewLifecycleOwner) {
             // Hide the loading container
             loadingContainer.visibility = View.GONE
 
-            // Populate this.mChartDataSets with the LiveData value
-            mChartDataSets = createChartDataset(it.t, it.y, it.yHat)
-
-            // Enable the checkboxes and set them to whether their corresponding data is visible -
-            // useful for retaining their state on fragment switches
+            // Enable the checkboxes and set them to whether their corresponding data is visible
+            // Useful for retaining their state on fragment switches
             rawDataCheckBox.isEnabled = true
             filteredDataCheckBox.isEnabled = true
-            rawDataCheckBox.isChecked = mChartDataSets[0].isVisible
-            filteredDataCheckBox.isChecked = mChartDataSets[1].isVisible
+            rawDataCheckBox.isChecked = it[0].isVisible
+            filteredDataCheckBox.isChecked = it[1].isVisible
 
-            // Draw the chart
+            // Populate this.mChartDataSets with the liveDataset and draw mVizChart
+            mChartDataSets = it
             mVizChart.data = LineData(mChartDataSets)
             mVizChart.invalidate()
         }
@@ -213,48 +211,6 @@ class VisualizationFragment : Fragment() {
             }
         }
         mVizChart.invalidate()
-    }
-
-    /**
-     * Creates a the chart dataset given t, y, and yHat
-     * @param [t] - vector of times in hours from first time point
-     * @param [y] - vector of raw biometric values
-     * @param [yHat] - vector of filtered biometric values
-     * @return [dataSets] - pair of ILineDataSets that can be plotted by MPAndroidChart
-     */
-    private fun createChartDataset(
-        t: FloatArray,
-        y: FloatArray,
-        yHat: FloatArray
-    ): ArrayList<ILineDataSet> {
-
-        val rawDataEntries = mutableListOf<Entry>()
-        val filterDataEntries = mutableListOf<Entry>()
-        for(entry in t.indices){
-            rawDataEntries.add(Entry(t[entry], y[entry]))
-            filterDataEntries.add(Entry(t[entry], yHat[entry]))
-        }
-
-        val rawDataset = LineDataSet(
-            rawDataEntries,
-            getString(R.string.y_label)
-        )
-        rawDataset.color = Color.MAGENTA
-        rawDataset.setDrawCircles(false)
-
-        val filterDataset = LineDataSet(
-            filterDataEntries,
-            getString(R.string.yHat_label)
-        )
-        filterDataset.color = Color.RED
-        filterDataset.setDrawCircles(false)
-//        filterDataset.setDrawFilled(true)
-
-        val dataSets: ArrayList<ILineDataSet> = ArrayList()
-        dataSets.add(0, rawDataset)
-        dataSets.add(1, filterDataset)
-
-        return dataSets
     }
 
 }

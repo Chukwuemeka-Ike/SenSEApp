@@ -40,10 +40,10 @@
             <RadioGroup
                 android:id="@+id/checkBoxGroup"
                 android:layout_width="wrap_content"
-                android:layout_height="@dimen/big_padding"
+                android:layout_height="@dimen/reg_padding"
                 android:layout_marginTop="@dimen/big_padding"
-                android:layout_marginStart="@dimen/reg_padding"
-                android:layout_marginEnd="@dimen/reg_padding"
+                android:layout_marginStart="@dimen/small_padding"
+                android:layout_marginEnd="@dimen/small_padding"
                 android:gravity="center"
                 android:orientation="horizontal"
                 app:layout_constraintStart_toStartOf="parent"
@@ -53,8 +53,8 @@
                     android:id="@+id/rawDataCheckBox"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/reg_padding"
-                    android:layout_marginEnd="@dimen/reg_padding"
+                    android:layout_marginStart="@dimen/small_padding"
+                    android:layout_marginEnd="@dimen/small_padding"
                     android:fontFamily="@string/basic_font"
                     android:text="@string/raw_data_checkbox" />
 
@@ -62,20 +62,20 @@
                     android:id="@+id/filteredDataCheckBox"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:layout_marginStart="@dimen/reg_padding"
-                    android:layout_marginEnd="@dimen/reg_padding"
+                    android:layout_marginStart="@dimen/small_padding"
+                    android:layout_marginEnd="@dimen/small_padding"
                     android:fontFamily="@string/basic_font"
                     android:text="@string/filtered_data_checkbox" />
             </RadioGroup>
 
             <Button
                 android:id="@+id/maximizeButton"
-                android:layout_width="@dimen/big_padding"
-                android:layout_height="@dimen/big_padding"
+                android:layout_width="@dimen/reg_padding"
+                android:layout_height="@dimen/reg_padding"
                 android:layout_marginTop="@dimen/big_padding"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginEnd="@dimen/reg_padding"
+                android:layout_marginEnd="@dimen/small_padding"
                 android:background="@drawable/ic_baseline_open_in_full_24_dark"
                 android:contentDescription="@string/maximize_button_name" />
 
@@ -84,8 +84,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="339dp"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginStart="@dimen/reg_padding"
-                android:layout_marginEnd="@dimen/reg_padding"
+                android:layout_marginTop="@dimen/small_padding"
+                android:layout_marginStart="@dimen/small_padding"
+                android:layout_marginEnd="@dimen/small_padding"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/checkBoxGroup"/>
@@ -97,8 +98,8 @@
                 android:gravity="center"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/reg_padding"
-                android:layout_marginEnd="@dimen/reg_padding"
+                android:layout_marginStart="@dimen/small_padding"
+                android:layout_marginEnd="@dimen/small_padding"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="@id/visualizationChart"
@@ -150,9 +151,9 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/reg_padding"
+            android:layout_marginStart="@dimen/small_padding"
             android:layout_marginTop="@dimen/massive_padding"
-            android:layout_marginEnd="@dimen/reg_padding"
+            android:layout_marginEnd="@dimen/small_padding"
             android:text="@string/not_authorized_viz_text"
             android:textAlignment="center"
             android:textSize="20sp"

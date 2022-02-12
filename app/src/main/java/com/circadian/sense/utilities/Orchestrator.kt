@@ -39,6 +39,8 @@ class Orchestrator(
         val weekAgo = today.minusDays(7).format(formatter)
         var newData: List<FloatArray>? = null
 
+        Log.i(TAG,"AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
+
         // If we have no data at all or old data, request and save raw data
         if (filterData == null){
             Log.i(TAG, "No saved data, requesting new data")
@@ -126,10 +128,12 @@ class Orchestrator(
     private suspend fun performActionWithFreshTokensSuspend(): List<FloatArray>? =
         suspendCoroutine {
             Log.i(TAG, "Orchestrator thread: ${Thread.currentThread().name}")
+            Log.i(TAG,"Suspend AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
             mAuthStateManager.current.performActionWithFreshTokens(
                 mAuthService
             ){ accessToken, idToken, ex ->
                 Log.i(TAG, "${accessToken}, ${idToken}, $ex")
+                mAuthStateManager.replace(mAuthStateManager.current) // Update the state
                 val userId = getUserID()
                 CoroutineScope(it.context).launch(Dispatchers.IO) {
                     it.resume(
