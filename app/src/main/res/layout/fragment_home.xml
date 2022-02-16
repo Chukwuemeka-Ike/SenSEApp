@@ -13,7 +13,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
-        android:fontFamily="monospace"
+        android:fontFamily="@string/basic_font"
         android:gravity="center"
         android:text="@string/home_greeting"
         android:textSize="20sp"
@@ -23,5 +23,5 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.166" />
+        app:layout_constraintVertical_bias="0.314" />
 </androidx.constraintlayout.widget.ConstraintLayout>

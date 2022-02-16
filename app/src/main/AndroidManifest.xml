@@ -1,38 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.circadian.sense"
-    android:name="com.chaquo.python.android.PyApplication">
+    android:name="com.chaquo.python.android.PyApplication"
+    package="com.circadian.sense">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".MainApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:largeHeap="true"
+        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:largeHeap="true"
         android:theme="@style/Theme.SenSE">
-
+        <activity
+            android:name=".ui.visualization.VisualizationActivity"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:launchMode="singleTop">
-
+            android:launchMode="standard">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".ui.settings.LoginActivity"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:parentActivityName=".MainActivity" />
-
+        </activity> <!-- Allows us capture the Fitbit initial auth redirect uri from - "app://auth" -->
         <activity
             android:name="net.openid.appauth.RedirectUriReceiverActivity"
             android:exported="true"
@@ -48,7 +45,6 @@
                     android:scheme="app" />
             </intent-filter>
         </activity>
-
     </application>
 
 </manifest>

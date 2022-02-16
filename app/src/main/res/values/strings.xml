@@ -1,34 +1,47 @@
 <resources>
     <string name="app_name">SenSE</string>
-<!--    Home Fragment Strings-->
+
+    <!--    Home Fragment Strings-->
     <string name="title_home">Home</string>
-    <string name="home_greeting">Welcome to SenSE.\n\n We are working towards a more optimized life experience.\n\n\n To get started, please grant the app access to your Fitbit data in settings.</string>
+    <string name="home_greeting">Welcome to SenSE.\n\n\n\n We are working towards a more optimized life experience.\n\n\n\n To get started, please grant the app access to your Fitbit data in settings.</string>
 
-<!--    Visualization Fragment Strings-->
+    <!--    Visualization Fragment Strings-->
     <string name="title_visualization">Visualization</string>
+    <string name="filtered_data_checkbox">Filtered Data</string>
+    <string name="raw_data_checkbox">Raw Data</string>
+    <string name="not_authorized_viz_text">The app has not been authorized yet, so we cannot visualize your data. \n\nPlease navigate to settings to log in to Fitbit</string>
+    <string name="optimize_button_label">Optimize Filter</string>
+    <string name="y_label">Heart Rate (BPM)</string>
+    <string name="yHat_label">Filtered Output </string>
 
-<!--    Settings Fragment Strings-->
+    <!--    Settings Fragment Strings-->
     <string name="title_settings">Settings</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="login_pref_tag">login</string>
+    <string name="login_button_label">Log In</string>
     <string name="login_description">Grant SenSE access to your Fitbit data</string>
     <string name="logout_pref_tag">logout</string>
+    <string name="logout_button_label">Log Out</string>
     <string name="logout_description">Log out of your Fitbit account</string>
+    <string name="start_auth">Logging in…</string>
+    <string name="logout_dialog_message">Are you sure?</string>
+    <string name="logout_dialog_positive">Yes</string>
+    <string name="logout_dialog_negative">No</string>
+    <string name="logout_successful">Logged out successfully</string>
 
-<!--    Login Activity Strings-->
-    <string name="login_button_label">Connect Fitbit Account</string>
-    <string name="retry_button_label">Retry</string>
-    <string name="logout_button_label">Logout</string>
-
-<!--    Authorization Workflow Strings-->
-    <string name="authorization_endpoint">https://www.fitbit.com/oauth2/authorize?</string>
-    <string name="token_endpoint">https://api.fitbit.com/oauth2/token</string>
-    <string name="auth_state_pref_file">com_circadian_sense_auth_state</string>
-    <string name="auth_state_pref_key">authState</string>
+    <!--    Authorization Workflow Strings-->
     <string name="auth_failed_snack">Authorization failed. Please retry</string>
     <string name="auth_success_snack">Authorization successful</string>
-    <string name="client_id">23BJF4</string>
-    <string name="redirect_uri">app://auth</string>
-    <string name="scope">activity heartrate weight</string>
+    <string name="access_revoke_io_error">Network error when revoking Fitbit authorization</string>
+    <string name="access_revoke_json_error">Failed to parse access revoke response</string>
+    <string name="token_refresh_failed">Token refresh failed when fetching user info</string>
+    <string name="request_user_info_io_exception">Network error when querying userinfo endpoint</string>
+    <string name="request_user_info_json_exception">Failed to parse userinfo response</string>
+    <string name="user_already_authenticated">User is already authenticated, returning to main activity</string>
+    <string name="configuration_has_changed">Configuration change detected, discarding old state</string>
+
+    <!--    Fonts-->
+    <string name="basic_font">monospace</string>
+    <string name="maximize_button_name">Fullscreen Button</string>
+    <string name="minimize_fullscreen_description">Minimize fullscreen</string>
+
 </resources>
