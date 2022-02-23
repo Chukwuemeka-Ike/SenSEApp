@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
         navView.setupWithNavController(navController)
 
         // Start Python if not started
-        if (! Python.isStarted()) {
+        if (!Python.isStarted()) {
             Log.i(TAG, "Starting Python")
             Python.start(AndroidPlatform(this))
         }

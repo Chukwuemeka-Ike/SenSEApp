@@ -64,6 +64,7 @@ dependencies {
 
     // Room components
     implementation "androidx.room:room-ktx:$project.roomVersion"
+    implementation 'androidx.security:security-crypto-ktx:1.1.0-alpha03'
     kapt "androidx.room:room-compiler:$project.roomVersion"
     androidTestImplementation "androidx.room:room-testing:$project.roomVersion"
 

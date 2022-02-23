@@ -23,6 +23,7 @@ import com.circadian.sense.MainActivity
 import com.circadian.sense.R
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
+import com.circadian.sense.utilities.DataManager
 import net.openid.appauth.*
 import org.json.JSONException
 import java.io.IOException
@@ -39,6 +40,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private lateinit var mAuthService: AuthorizationService
     private lateinit var mConfiguration: Configuration
     private lateinit var mExecutor: ExecutorService
+    private lateinit var mDataManager: DataManager
 
     private val mClientId = AtomicReference<String>()
     private val mAuthRequest = AtomicReference<AuthorizationRequest>()
@@ -95,6 +97,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 .setConnectionBuilder(mConfiguration.connectionBuilder)
                 .build()
         )
+        mDataManager = DataManager(requireContext().applicationContext)
+
 
         // Login and Logout preferences
         loginPreference = findPreference(getString(R.string.login_pref_tag))
@@ -493,6 +497,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         if (mAuthStateManager.current.needsTokenRefresh) {
             refreshAccessToken()
         }
+        mDataManager.clearData()
 
         mExecutor.submit {
             try {

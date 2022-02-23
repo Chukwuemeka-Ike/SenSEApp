@@ -1,6 +1,5 @@
 package com.circadian.sense.ui.visualization
 
-import android.app.Application
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -10,7 +9,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.circadian.sense.R
@@ -18,11 +16,10 @@ import com.circadian.sense.databinding.FragmentVisualizationBinding
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
 import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import android.content.res.Configuration as resConfiguration
+
 
 class VisualizationFragment : Fragment() {
 
@@ -62,6 +59,7 @@ class VisualizationFragment : Fragment() {
         val optimizeButton = binding.optimizeButton     // Optimize button
         val loadingContainer = binding.loadingContainer     // Loading container with progress bar
         val maximizeButton = binding.maximizeButton
+        maximizeButton.isEnabled = false
         mVizChart = binding.visualizationChart           // The chart for data visualization
 
         if (mAuthStateManager.current.isAuthorized && !mConfiguration.hasConfigurationChanged()){
@@ -103,6 +101,15 @@ class VisualizationFragment : Fragment() {
                     requireContext(), VisualizationActivity::class.java
                 )//.putExtra("dd", vizViewModel.filterData)
             )
+
+//            val bundle = Bundle()
+//            bundle.putSerializable("Chart Data", vizViewModel.chartData.value?.toArray())
+//
+//            startActivity(
+//                Intent(
+//                    activity, VisualizationActivity::class.java
+//                ).putExtras(bundle)
+//            )
 //            val intent = Intent(this, VisualizationActivity::class.java).apply {
 //                putExtra(EXTRA_MESSAGE, response)
 //            }
@@ -120,6 +127,8 @@ class VisualizationFragment : Fragment() {
             filteredDataCheckBox.isEnabled = true
             rawDataCheckBox.isChecked = it[0].isVisible
             filteredDataCheckBox.isChecked = it[1].isVisible
+
+            maximizeButton.isEnabled = true
 
             // Populate this.mChartDataSets with the liveDataset and draw mVizChart
             mChartDataSets = it
@@ -166,7 +175,10 @@ class VisualizationFragment : Fragment() {
         mVizChart.isDragEnabled = true
         mVizChart.setScaleEnabled(true)
         mVizChart.setPinchZoom(false)
-        mVizChart.animateXY(100, 100)
+        mVizChart.animateXY(200, 200)
+        mVizChart.xAxis.setLabelCount(5, true)
+        mVizChart.xAxis.axisMinimum = 0F
+        mVizChart.xAxis.axisMaximum = 192F
 
         val tf = Typeface.SANS_SERIF
         val l = mVizChart.legend

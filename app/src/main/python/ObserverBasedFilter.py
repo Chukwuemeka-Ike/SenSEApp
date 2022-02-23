@@ -58,7 +58,10 @@ class ObserverBasedFilter:
             # TODO: Make sure this is as efficient as possible
             # The reshapes are all to make sure it's the right dimension
             # Update the current state based on previous filter state and previous input
-            xHat[:,j] = np.reshape(np.reshape(np.matmul(A,xHat[:,j-1]).T, (self.__stateLength,1)) + (B*y[j-1]), (self.__stateLength))
+            if y[j-1] == 0:
+                xHat[:,j] = np.reshape(np.matmul(A,xHat[:,j-1]).T, (self.__stateLength))
+            else:
+                xHat[:,j] = np.reshape(np.reshape(np.matmul(A,xHat[:,j-1]).T, (self.__stateLength,1)) + (B*y[j-1]), (self.__stateLength))
         
         # Multiply the whole history of filter states by the C matrix to give us the output history
         yHat = np.matmul(C, xHat)

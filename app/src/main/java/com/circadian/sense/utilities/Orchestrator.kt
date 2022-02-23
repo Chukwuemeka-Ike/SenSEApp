@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.openid.appauth.AuthorizationService
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -23,82 +24,73 @@ class Orchestrator(
     private val mOBF: ObserverBasedFilter
     ) {
 
-    private val mUserInfoJson = AtomicReference<List<FloatArray>?>()
-
     suspend fun getFreshData(): DataPack? {
         if (!mAuthStateManager.current.isAuthorized){
             return null
         }
 
+        // Date strings to allow us check whether stuff is up to date
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val today = LocalDateTime.now()
+        val todayString = today.format(formatter)
+        val yesterdayString = today.minusDays(1).format(formatter)
+        val weekAgoString = today.minusDays(7).format(formatter)
+
         // Load previously saved data
         val filterData = mDataManager.loadData()
-        val today = LocalDateTime.now()
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-        val todayString = today.format(formatter)
-        val yesterday = today.minusDays(1).format(formatter)
-        val weekAgo = today.minusDays(7).format(formatter)
         var newData: List<FloatArray>? = null
 
         Log.i(TAG,"AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
 
-        // If we have no data at all or old data, request and save raw data
+        // If we have no data at all, request and save new data
         if (filterData == null){
             Log.i(TAG, "No saved data, requesting new data")
-            newData = performActionWithFreshTokensSuspend()
-            val dataLength = newData!![0].size
-            val t = FloatArray(dataLength)
 
-            for (i in 0 until dataLength) {
-                if (i == 0){
-                    t[i] = 0.0167F
-                }
-                else{
-                    t[i] = t[i-1]+0.0167F
-                }
-            }
-            Log.i(TAG, "Received data: ${t.asList()}")
-            Log.i(TAG, "Received data: ${newData!![1].asList()}")
-            val L = mOBF.optimizeFilter(t, newData!![1])
-            return finishUp(t, newData!![1], todayString, L!!, todayString)
+            newData = performActionWithFreshTokensSuspend()
+
+            Log.i(TAG, "Received t: ${newData!![0].asList()}")
+            Log.i(TAG, "Received y: ${newData!![1].asList()}")
+
+            val L = mOBF.optimizeFilter(newData!![0], newData!![1])
+            val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!.last()
+            return finishUp(newData!![0], newData!![1], yHat, yesterdayString, L!!, todayString)
         }
         // If the data is not up to date, request new data
-        else if (filterData.dataTimestamp < yesterday){
+        else if (filterData.dataTimestamp < yesterdayString){
             Log.i(TAG, "Stale saved data, requesting new data")
+            Log.i(TAG, "Data timestamp: ${filterData.dataTimestamp}")
+            Log.i(TAG, "Gains timestamp: ${filterData.gainsTimestamp}")
+
             newData = performActionWithFreshTokensSuspend()
-            val dataLength = newData!![0].size
-            val t = FloatArray(dataLength)
-
-            for (i in 0 until dataLength) {
-                if (i == 0){
-                    t[i] = 0.0167F
-                }
-                else{
-                    t[i] = t[i-1]+0.0167F
-                }
-            }
 
             // If gains are fresh, finishUp
-            if (filterData.gainsTimestamp > weekAgo){
+            if (filterData.gainsTimestamp > weekAgoString){
                 Log.i(TAG, "Fresh gains, finishing up")
-                return finishUp(t, newData!![1], todayString, filterData.gains, filterData.gainsTimestamp)
-            }
-            else {
-                Log.i(TAG, "Stale gains, optimizing filter first")
-                val L = mOBF.optimizeFilter(t, newData!![1])
-                return finishUp(t, newData!![1], todayString, L!!, todayString)
-            }
-        }
-        else {
-            Log.i(TAG, "Fresh saved data.")
-            // If gains are fresh, finishUp
-            if (filterData.gainsTimestamp > weekAgo){
-                Log.i(TAG, "Fresh gains, finishing up")
-                return finishUp(filterData.t, filterData.y, filterData.dataTimestamp, filterData.gains, filterData.gainsTimestamp)
+                val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], filterData.gains)!!.last()
+                return finishUp(newData!![0], newData!![1], yHat, yesterdayString, filterData.gains, filterData.gainsTimestamp)
             }
             else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
                 val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-                return finishUp(filterData.t, filterData.y, filterData.dataTimestamp, L!!, todayString)
+                val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!.last()
+                return finishUp(newData!![0], newData!![1], yHat, yesterdayString, L!!, todayString)
+            }
+        }
+        else {
+            Log.i(TAG, "Fresh saved data.")
+            Log.i(TAG, "Data timestamp: ${filterData.dataTimestamp}")
+            Log.i(TAG, "Gains timestamp: ${filterData.gainsTimestamp}")
+
+            // If gains are fresh, finishUp
+            if (filterData.gainsTimestamp > weekAgoString){
+                Log.i(TAG, "Fresh gains, finishing up")
+                return finishUp(filterData.t, filterData.y, filterData.yHat, filterData.dataTimestamp, filterData.gains, filterData.gainsTimestamp)
+            }
+            else {
+                Log.i(TAG, "Stale gains, optimizing filter first")
+                val L = mOBF.optimizeFilter(filterData.t, filterData.y)
+                val yHat = mOBF.simulateDynamics(filterData.t, filterData.y, L!!)!!.last()
+                return finishUp(filterData.t, filterData.y, yHat, filterData.dataTimestamp, L!!, todayString)
             }
         }
 
@@ -138,7 +130,7 @@ class Orchestrator(
                 CoroutineScope(it.context).launch(Dispatchers.IO) {
                     it.resume(
                         mDataManager.fetchMultiDayData(
-                            5,
+                            8,
                             userId!!,
                             accessToken!!,
                             mConfiguration
@@ -152,19 +144,14 @@ class Orchestrator(
     /**
      *
      */
-    private fun finishUp(t: FloatArray, y: FloatArray, dataTimestamp: String, L: FloatArray, gainsTimestamp: String): DataPack? {
+    private suspend fun finishUp(t: FloatArray, y: FloatArray, yHat: FloatArray, dataTimestamp: String, L: FloatArray, gainsTimestamp: String): DataPack? {
         Log.i(TAG, "Finishing up")
         return try {
-//            val today = LocalDateTime.now()
-//            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-//            val yesterday = today.minusDays(1).format(formatter)
-
-            val yHat = mOBF.simulateDynamics(t, y, L)!!.last()
-
             val data = DataPack(t, y, yHat, dataTimestamp, L, gainsTimestamp)
-
             // Save the data to file
-            mDataManager.writeData(data)
+            withContext(Dispatchers.IO) {
+                mDataManager.writeData(data)
+            }
             data
         }
         catch (e: Exception){
