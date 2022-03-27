@@ -41,7 +41,7 @@
                 android:id="@+id/checkBoxGroup"
                 android:layout_width="wrap_content"
                 android:layout_height="@dimen/reg_padding"
-                android:layout_marginTop="@dimen/big_padding"
+                android:layout_marginTop="@dimen/small_padding"
                 android:layout_marginStart="@dimen/small_padding"
                 android:layout_marginEnd="@dimen/small_padding"
                 android:gravity="center"
@@ -72,9 +72,9 @@
                 android:id="@+id/maximizeButton"
                 android:layout_width="@dimen/reg_padding"
                 android:layout_height="@dimen/reg_padding"
-                android:layout_marginTop="@dimen/big_padding"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/visualizationChart"
                 android:layout_marginEnd="@dimen/small_padding"
                 android:background="@drawable/ic_baseline_open_in_full_24_dark"
                 android:contentDescription="@string/maximize_button_name" />
@@ -122,20 +122,37 @@
                     android:layout_gravity="center_horizontal"/>
             </LinearLayout>
 
-            <Button
-                android:id="@+id/optimize_button"
-                android:layout_width="200dp"
-                android:layout_height="@dimen/button_height"
-                android:text="@string/optimize_button_label"
+<!--            <Button-->
+<!--                android:id="@+id/optimize_button"-->
+<!--                android:layout_width="200dp"-->
+<!--                android:layout_height="@dimen/button_height"-->
+<!--                android:text="@string/optimize_button_label"-->
+<!--                android:layout_marginTop="@dimen/small_padding"-->
+<!--                android:layout_marginBottom="@dimen/big_padding"-->
+<!--                android:fontFamily="@string/basic_font"-->
+<!--                app:layout_constraintStart_toStartOf="parent"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintTop_toBottomOf="@+id/visualizationChart"-->
+<!--                app:layout_constraintBottom_toBottomOf="parent">-->
+
+<!--            </Button>-->
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/small_padding"
+                android:layout_marginEnd="@dimen/small_padding"
                 android:layout_marginTop="@dimen/big_padding"
                 android:layout_marginBottom="@dimen/big_padding"
+                android:text="@string/visualization_exposition"
                 android:fontFamily="@string/basic_font"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
+                android:gravity="left"
+                android:textSize="@dimen/normal_font_size"
+                app:layout_constraintHorizontal_bias="0.0"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/visualizationChart">
-
-            </Button>
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/visualizationChart"
+                app:layout_constraintBottom_toBottomOf="parent"/>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
@@ -156,7 +173,7 @@
             android:layout_marginEnd="@dimen/small_padding"
             android:text="@string/not_authorized_viz_text"
             android:textAlignment="center"
-            android:textSize="20sp"
+            android:textSize="@dimen/normal_font_size"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"

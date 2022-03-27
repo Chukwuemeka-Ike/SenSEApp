@@ -35,7 +35,7 @@ class DataManager (private val context: Context) {
             Log.i(TAG, "Successfully deleted user data")
         }
         catch (e: Exception){
-            Log.e(TAG, "Failed to delete with exception: $e")
+            Log.e(TAG, "Failed to delete user data with exception: $e")
         }
     }
 
@@ -45,7 +45,6 @@ class DataManager (private val context: Context) {
      */
     fun loadData(): DataPack? {
         return try {
-
             val b = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
             val encryptedFile = EncryptedFile.Builder(
                 context,
@@ -155,25 +154,19 @@ class DataManager (private val context: Context) {
     fun fetchMultiDayData(numDays: Int, userId: String, accessToken: String, configuration: Configuration): List<FloatArray>? {
         val userInfoEndpoint = configuration.getUserInfoEndpointUri()
 
-        // Chain together 14 API calls
+        // Chain together numDays API calls
         val today = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern(datePattern)
-        val twoWeeks = 1..numDays
-        val twoWeekData = mutableListOf<List<FloatArray>?>()
-//        val t = mutableListOf<Float>()
+        val multiDays = (numDays downTo 1)
         val y = mutableListOf<Float>()
 
-        for (i in twoWeeks){
+        for (i in multiDays){
             val date = today.minusDays(i.toLong()).format(formatter)
+
             val userDataRequestURL = Uri.parse("$userInfoEndpoint/${userId}/activities/heart/date/${date}/1d/1min.json")
             Log.i(TAG, userDataRequestURL.toString())
+
             val oneDayData = fetchSingleDayData(configuration.connectionBuilder, userDataRequestURL, accessToken)
-            Log.i(TAG, "Received single day data")
-            twoWeekData.add(oneDayData)
-            Log.i(TAG, "Added data to list")
-//            oneDayData!![0].forEach {
-//                t.add(it)
-//            }
             oneDayData!![1].forEach {
                 y.add(it)
             }

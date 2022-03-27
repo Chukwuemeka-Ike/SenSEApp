@@ -1,5 +1,6 @@
 package com.circadian.sense.utilities
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,7 +9,6 @@ import kotlinx.coroutines.withContext
 import net.openid.appauth.AuthorizationService
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -17,12 +17,25 @@ import kotlin.coroutines.suspendCoroutine
  * deliver fresh input and output data whenever requested
  */
 class Orchestrator(
-    private val mAuthStateManager: AuthStateManager,
-    private val mConfiguration: Configuration,
-    private val mAuthService: AuthorizationService,
-    private val mDataManager: DataManager,
-    private val mOBF: ObserverBasedFilter
+    mContext: Context
     ) {
+
+    private val TAG = "Orchestrator"
+    private val numDays = 8
+    private val mAuthStateManager: AuthStateManager
+    private val mConfiguration: Configuration
+    private val mAuthService: AuthorizationService
+    private val mOBF: ObserverBasedFilter
+    private val mDataManager: DataManager
+
+    init {
+        Log.i(TAG, "Optimization Worker created")
+        mAuthStateManager = AuthStateManager.getInstance(mContext)
+        mConfiguration = Configuration.getInstance(mContext)
+        mAuthService = AuthorizationService(mContext)
+        mOBF = ObserverBasedFilter()
+        mDataManager = DataManager(mContext)
+    }
 
     suspend fun getFreshData(): DataPack? {
         if (!mAuthStateManager.current.isAuthorized){
@@ -130,7 +143,7 @@ class Orchestrator(
                 CoroutineScope(it.context).launch(Dispatchers.IO) {
                     it.resume(
                         mDataManager.fetchMultiDayData(
-                            8,
+                            numDays,
                             userId!!,
                             accessToken!!,
                             mConfiguration
@@ -161,7 +174,4 @@ class Orchestrator(
 
     }
 
-    companion object{
-        private const val TAG = "Orchestrator"
-    }
 }

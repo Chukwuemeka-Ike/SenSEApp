@@ -15,9 +15,19 @@ import com.circadian.sense.R
 import com.circadian.sense.databinding.FragmentVisualizationBinding
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
+import com.circadian.sense.utilities.DataManager
 import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.AxisBase
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.formatter.IAxisValueFormatter
+import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
+import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
+import java.util.*
+import java.util.concurrent.TimeUnit
 import android.content.res.Configuration as resConfiguration
 
 
@@ -56,7 +66,7 @@ class VisualizationFragment : Fragment() {
         // Checkboxes that allow user choose which data is visible on the graph
         val rawDataCheckBox = binding.rawDataCheckBox
         val filteredDataCheckBox = binding.filteredDataCheckBox
-        val optimizeButton = binding.optimizeButton     // Optimize button
+//        val optimizeButton = binding.optimizeButton     // Optimize button
         val loadingContainer = binding.loadingContainer     // Loading container with progress bar
         val maximizeButton = binding.maximizeButton
         maximizeButton.isEnabled = false
@@ -89,11 +99,11 @@ class VisualizationFragment : Fragment() {
             makeDataVisible(filteredDataCheckBox)
         }
 
-        optimizeButton.setOnClickListener {
-            mVizChart.setNoDataText("") // Empty string
-            loadingContainer.visibility = View.VISIBLE
-            vizViewModel.runWorkflow()  //
-        }
+//        optimizeButton.setOnClickListener {
+//            mVizChart.setNoDataText("") // Empty string
+//            loadingContainer.visibility = View.VISIBLE
+//            vizViewModel.runWorkflow()  //
+//        }
 
         maximizeButton.setOnClickListener {
             startActivity(
@@ -134,6 +144,7 @@ class VisualizationFragment : Fragment() {
             mChartDataSets = it
             mVizChart.data = LineData(mChartDataSets)
             mVizChart.invalidate()
+            Log.i(TAG, "Dataset: ${mVizChart.data.dataSets[1].xMax}")
         }
 
         return root
@@ -176,34 +187,44 @@ class VisualizationFragment : Fragment() {
         mVizChart.setScaleEnabled(true)
         mVizChart.setPinchZoom(false)
         mVizChart.animateXY(200, 200)
-        mVizChart.xAxis.setLabelCount(5, true)
-        mVizChart.xAxis.axisMinimum = 0F
-        mVizChart.xAxis.axisMaximum = 192F
+        mVizChart.axisRight.isEnabled = false
+        mVizChart.setDrawMarkers(false)
 
         val tf = Typeface.SANS_SERIF
-        val l = mVizChart.legend
-        l.typeface = tf
+        mVizChart.legend.typeface = tf
 
         val leftAxis = mVizChart.axisLeft
         leftAxis.typeface = tf
-
-        mVizChart.axisRight.isEnabled = false
+        leftAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART)
+        leftAxis.spaceTop = 15f
 
         val xAxis = mVizChart.xAxis
         xAxis.isEnabled = true
         xAxis.typeface = tf
+        xAxis.setLabelCount(3, false)
+        xAxis.granularity = 1440/4f
+        xAxis.setCenterAxisLabels(false)
+
+        xAxis.position = XAxis.XAxisPosition.TOP_INSIDE
+        xAxis.valueFormatter = object : ValueFormatter() {
+            private val mFormat = SimpleDateFormat("MMM dd HH:mm", Locale.ENGLISH)
+            override fun getAxisLabel(value: Float, axis: AxisBase?): String {
+                val millis: Long = TimeUnit.MINUTES.toMillis(value.toLong())
+                return mFormat.format(Date(millis))
+            }
+        }
 
         val nightMod =
             requireActivity().resources.configuration.uiMode and resConfiguration.UI_MODE_NIGHT_MASK
         if (nightMod == resConfiguration.UI_MODE_NIGHT_YES) {
             mVizChart.setBackgroundColor(Color.BLACK)
-            mVizChart.axisLeft.textColor = Color.WHITE
-            mVizChart.xAxis.textColor = Color.WHITE
+            leftAxis.textColor = Color.WHITE
+            xAxis.textColor = Color.WHITE
             mVizChart.legend.textColor = Color.WHITE
         } else {
             mVizChart.setBackgroundColor(Color.WHITE)
-            mVizChart.axisLeft.textColor = Color.BLACK
-            mVizChart.xAxis.textColor = Color.BLACK
+            leftAxis.textColor = Color.BLACK
+            xAxis.textColor = Color.BLACK
             mVizChart.legend.textColor = Color.BLACK
         }
     }
@@ -218,7 +239,7 @@ class VisualizationFragment : Fragment() {
             R.id.filteredDataCheckBox -> {
                 mChartDataSets[1].isVisible = binding.filteredDataCheckBox.isChecked
             }
-            R.id.rawDataCheckBox ->{
+            R.id.rawDataCheckBox -> {
                 mChartDataSets[0].isVisible = binding.rawDataCheckBox.isChecked
             }
         }

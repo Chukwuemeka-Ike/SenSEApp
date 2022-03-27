@@ -6,22 +6,52 @@
     android:layout_height="match_parent"
     tools:context=".ui.home.HomeFragment">
 
-    <TextView
-        android:id="@+id/text_home"
+<!--    <Toolbar-->
+<!--        android:id="@+id/home_toolbar"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="@dimen/big_padding"-->
+<!--        android:title="@string/title_home"-->
+<!--        android:gravity="center_horizontal"-->
+<!--        android:titleTextColor="@color/white"-->
+<!--        android:textAlignment="inherit"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"/>-->
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
-        android:fontFamily="@string/basic_font"
-        android:gravity="center"
-        android:text="@string/home_greeting"
-        android:textSize="20sp"
-        android:textStyle="normal"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
+        android:orientation="vertical"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.314" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        >
+    <Button
+        android:id="@+id/circadian_health_button"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/massive_padding"
+        android:layout_marginTop="@dimen/big_padding"
+        android:layout_marginStart="@dimen/small_padding"
+        android:layout_marginEnd="@dimen/small_padding"
+        android:text="@string/circadian_health_button_label"/>
+    <Button
+        android:id="@+id/who_we_are_button"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/massive_padding"
+        android:layout_marginTop="@dimen/big_padding"
+        android:layout_marginStart="@dimen/small_padding"
+        android:layout_marginEnd="@dimen/small_padding"
+        android:text="@string/who_we_are_button_label"/>
+    <Button
+        android:id="@+id/data_use_button"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/massive_padding"
+        android:layout_marginTop="@dimen/big_padding"
+        android:layout_marginBottom="@dimen/big_padding"
+        android:layout_marginStart="@dimen/small_padding"
+        android:layout_marginEnd="@dimen/small_padding"
+        android:text="@string/data_use_button_label" />
+    </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
