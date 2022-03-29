@@ -14,7 +14,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.circadian.sense.R
-import com.circadian.sense.TAG_OUTPUT
+import com.circadian.sense.DAILY_OPTIMIZATION_WORKER_TAG
 import com.circadian.sense.databinding.FragmentVisualizationBinding
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
@@ -63,29 +63,6 @@ class VisualizationFragment : Fragment() {
         // Checkboxes that allow user choose which data is visible on the graph
         val rawDataCheckBox = binding.rawDataCheckBox
         val filteredDataCheckBox = binding.filteredDataCheckBox
-//        val optimizeButton = binding.optimizeButton     // Optimize button
-        val loadingContainer = binding.loadingContainer     // Loading container with progress bar
-        val maximizeButton = binding.maximizeButton
-        mVizChart = binding.visualizationChart           // The chart for data visualization
-
-        if (mAuthStateManager.current.isAuthorized && !mConfiguration.hasConfigurationChanged()){
-            displayAuthorized()
-        }
-        else {
-            displayNotAuthorized()
-        }
-
-        // Preliminary view setup
-        // Set the maximize button according to the user theme
-        maximizeButton.isEnabled = false
-        val nightMod =
-            this.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-        if (nightMod == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
-            maximizeButton.setBackgroundResource(R.drawable.ic_baseline_open_in_full_24_light)
-        } else {
-            maximizeButton.setBackgroundResource(R.drawable.ic_baseline_open_in_full_24_dark)
-        }
-        loadingContainer.visibility = View.GONE
         rawDataCheckBox.isEnabled = false
         filteredDataCheckBox.isEnabled = false
 
@@ -95,11 +72,37 @@ class VisualizationFragment : Fragment() {
         filteredDataCheckBox.setOnClickListener {
             makeDataVisible(filteredDataCheckBox)
         }
+
+//        val optimizeButton = binding.optimizeButton     // Optimize button
 //        optimizeButton.setOnClickListener {
 //            mVizChart.setNoDataText("") // Empty string
 //            loadingContainer.visibility = View.VISIBLE
 //            vizViewModel.runWorkflow()  //
 //        }
+
+        val loadingContainer = binding.loadingContainer     // Loading container with progress bar
+        loadingContainer.visibility = View.GONE
+
+        mVizChart = binding.visualizationChart           // The chart for data visualization
+
+        if (mAuthStateManager.current.isAuthorized && !mConfiguration.hasConfigurationChanged()) {
+            displayAuthorized()
+        } else {
+            displayNotAuthorized()
+        }
+
+        // Set the maximize button according to the user theme
+        val maximizeButton = binding.maximizeButton
+        maximizeButton.isEnabled = false
+
+        val nightMod =
+            this.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        if (nightMod == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
+            maximizeButton.setBackgroundResource(R.drawable.ic_baseline_open_in_full_24_light)
+        } else {
+            maximizeButton.setBackgroundResource(R.drawable.ic_baseline_open_in_full_24_dark)
+        }
+
         maximizeButton.setOnClickListener {
             startActivity(
                 Intent(
@@ -108,26 +111,22 @@ class VisualizationFragment : Fragment() {
             )
         }
 
-        WorkManager.getInstance(requireContext()).getWorkInfosByTagLiveData(TAG_OUTPUT)
+
+        // Listen for WorkManager. If it's succeeded and mVizChart hasn't been populated, createChartDataset
+        WorkManager.getInstance(requireContext()).getWorkInfosByTagLiveData(DAILY_OPTIMIZATION_WORKER_TAG)
             .observe(viewLifecycleOwner) { workInfos ->
-                if(workInfos.isNotEmpty() && mVizChart.data == null){
-                    if (workInfos[0] != null && workInfos[0].state == WorkInfo.State.SUCCEEDED) {
-                        Log.i(TAG, "Work Infos not empty, and successful work state, so creating chart dataset")
+                if (workInfos.isNotEmpty() && mVizChart.data == null && workInfos[0] != null){
+                    if (workInfos[0].state == WorkInfo.State.SUCCEEDED) {
+                        Log.i(TAG,"Work Infos not empty, and successful work state, so creating chart dataset")
                         vizViewModel.createChartDataset()
+                        loadingContainer.visibility = View.GONE
+                    } else {
+                        loadingContainer.visibility = View.VISIBLE
                     }
                 }
             }
-//        // Observer the WorkRequest
-//        WorkManager.getInstance(requireContext()).getWorkInfoByIdLiveData(vizViewModel.optimizeWorkRequest.id)
-//            .observe(viewLifecycleOwner) { workInfo ->
-//                if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
-//                    val outputDDdata = workInfo.outputData
-//
-//                    vizViewModel.createChartDataset()
-//                }
-//            }
 
-        // Observe the data we need for mVizChart
+        // Observe the LiveData we need for mVizChart
         vizViewModel.chartData.observe(viewLifecycleOwner) {
             // Hide the loading container
             loadingContainer.visibility = View.GONE
@@ -141,7 +140,7 @@ class VisualizationFragment : Fragment() {
 
             maximizeButton.isEnabled = true
 
-            // Populate this.mChartDataSets with the liveDataset and draw mVizChart
+            // Populate mChartDataSets with the liveDataset and draw mVizChart
             mChartDataSets = it
             mVizChart.data = LineData(mChartDataSets)
             mVizChart.invalidate()
@@ -156,7 +155,7 @@ class VisualizationFragment : Fragment() {
     }
 
     /**
-     *
+     * Shows the Authorized container
      */
     private fun displayAuthorized() {
         binding.authorizedViz.visibility = View.VISIBLE
@@ -165,7 +164,7 @@ class VisualizationFragment : Fragment() {
     }
 
     /**
-     *
+     * Shows the Not Authorized container
      */
     private fun displayNotAuthorized() {
         binding.authorizedViz.visibility = View.GONE
@@ -173,9 +172,9 @@ class VisualizationFragment : Fragment() {
     }
 
     /**
-     *
+     * Creates the visualization chart and sets all its default values before the plots are made
      */
-    private fun createVisualizationChart(){
+    private fun createVisualizationChart() {
         mVizChart.description.isEnabled = false
         mVizChart.setDrawGridBackground(false)
         mVizChart.isDragEnabled = true
@@ -197,9 +196,10 @@ class VisualizationFragment : Fragment() {
         xAxis.isEnabled = true
         xAxis.typeface = tf
         xAxis.setLabelCount(3, false)
-        xAxis.granularity = 1440/4f
+        xAxis.granularity = 1440 / 24f
         xAxis.setCenterAxisLabels(false)
 
+        // Convert the x-axis millis values to string timestamps
         xAxis.position = XAxis.XAxisPosition.TOP_INSIDE
         xAxis.valueFormatter = object : ValueFormatter() {
             private val mFormat = SimpleDateFormat("MMM dd HH:mm", Locale.ENGLISH)
@@ -209,6 +209,7 @@ class VisualizationFragment : Fragment() {
             }
         }
 
+        // Color the chart according to user theme
         val nightMod =
             requireActivity().resources.configuration.uiMode and resConfiguration.UI_MODE_NIGHT_MASK
         if (nightMod == resConfiguration.UI_MODE_NIGHT_YES) {
@@ -228,8 +229,8 @@ class VisualizationFragment : Fragment() {
      * Makes the data visible according to whether each checkbox is checked
      * @param [v] - the checkbox that was clicked
      */
-    private fun makeDataVisible(v:CheckBox){
-        when (v.id){
+    private fun makeDataVisible(v: CheckBox) {
+        when (v.id) {
             R.id.filteredDataCheckBox -> {
                 mChartDataSets[1].isVisible = binding.filteredDataCheckBox.isChecked
             }

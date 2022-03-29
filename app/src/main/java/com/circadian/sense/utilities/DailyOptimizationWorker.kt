@@ -16,14 +16,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.system.measureTimeMillis
 
-class DailyOptimizationWorker (appContext: Context, workerParams: WorkerParameters):
+class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
-    private val TAG = "PeriodicOptimizationWorker"
+    private val TAG = "DailyOptimizationWorker"
     private val mOrchestrator: Orchestrator
 
-    private val notificationManager =
+    private val mNotificationManager =
         appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     init {
@@ -31,41 +32,35 @@ class DailyOptimizationWorker (appContext: Context, workerParams: WorkerParamete
         mOrchestrator = Orchestrator(appContext)
 
         // Create a Notification channel if necessary
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            createChannel()
-        }
+        createChannel()
     }
 
     /**
      * Creates an instance of ForegroundInfo which can be used to update the ongoing notification
      * @param [progress]
      */
-    private fun createForegroundInfo(progress: String): ForegroundInfo {
-        val cancel = "Cancel optimization"
+    private fun createForegroundInfo(): ForegroundInfo {
         // This PendingIntent can be used to cancel the worker
-        val intent = WorkManager.getInstance(applicationContext)
-            .createCancelPendingIntent(id)
+        val intent = WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
+        val cancel = applicationContext.getString(R.string.cancel_optimization_button)
+        val notification = createNotification(
+            applicationContext.getString(R.string.optimization_ongoing_notification),
+            true,
+            NotificationCompat.Action(android.R.drawable.ic_delete, cancel, intent)
+        )
 
-//        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-//            .setSmallIcon(R.mipmap.ic_launcher)
-//            .setContentTitle(NOTIFICATION_TITLE)
-//            .setContentText(progress)
-//            .setStyle(NotificationCompat.BigTextStyle().bigText(progress))
-//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-//            .setVibrate(LongArray(0))
-//            .setTicker(NOTIFICATION_TITLE)
-//            .setOngoing(true)
-//            // Add the cancel action to the notification which can
-//            // be used to cancel the worker
-//            .addAction(android.R.drawable.ic_delete, cancel, intent)
-//            .build()
-
-        val notification = createNotification(progress, true, NotificationCompat.Action(android.R.drawable.ic_delete, cancel, intent))
-
-        return ForegroundInfo(OPTIMIZATION_START_NOTIFICATION_ID, notification)
+        return ForegroundInfo(OPTIMIZATION_ONGOING_NOTIFICATION_ID, notification)
     }
 
-    private fun createNotification(progress: String, isOngoing: Boolean, actions: NotificationCompat.Action?) : Notification {
+    /**
+     * Creates a notification with the message and action. It can be an ongoing notification,
+     * but that's only set by the
+     */
+    private fun createNotification(
+        message: String,
+        isOngoing: Boolean,
+        actions: NotificationCompat.Action?
+    ): Notification {
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP// or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -74,12 +69,12 @@ class DailyOptimizationWorker (appContext: Context, workerParams: WorkerParamete
 
         return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(NOTIFICATION_TITLE)
-            .setContentText(progress)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(progress))
+            .setContentTitle(applicationContext.getString(R.string.optimization_notification_title))
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVibrate(LongArray(0))
-            .setTicker(NOTIFICATION_TITLE)
+            .setTicker(applicationContext.getString(R.string.optimization_notification_title))
             .setOngoing(isOngoing)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -89,9 +84,11 @@ class DailyOptimizationWorker (appContext: Context, workerParams: WorkerParamete
             .build()
     }
 
-    private fun showNotification(notification: Notification){
-//        NotificationManagerCompat.from(applicationContext).notify(NOTIFICATION_ID, notification)
-        notificationManager.notify(OPTIMIZATION_FINISHED_NOTIFICATION_ID, notification)
+    /**
+     * Shows the notification with the object's notification manager
+     */
+    private fun showNotification(notification: Notification) {
+        mNotificationManager.notify(OPTIMIZATION_ENDED_NOTIFICATION_ID, notification)
     }
 
     /**
@@ -99,49 +96,50 @@ class DailyOptimizationWorker (appContext: Context, workerParams: WorkerParamete
      * the NotificationChannel class is new and not in the support library
      */
     private fun createChannel() {
-        val name = VERBOSE_NOTIFICATION_CHANNEL_NAME
-        val description = VERBOSE_NOTIFICATION_CHANNEL_DESCRIPTION
-        val importance = NotificationManager.IMPORTANCE_HIGH
-        val channel = NotificationChannel(CHANNEL_ID, name, importance)
-        channel.description = description
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = NOTIFICATION_CHANNEL_NAME
+            val description = NOTIFICATION_CHANNEL_DESCRIPTION
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(CHANNEL_ID, name, importance)
+            channel.description = description
 
-//        // Add the channel
-//        val notificationManager =
-//            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
-//                    as NotificationManager?
+            //        // Add the channel
+            //        val notificationManager =
+            //            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
+            //                    as NotificationManager?
 
-        notificationManager.createNotificationChannel(channel)
+            mNotificationManager.createNotificationChannel(channel)
+        }
     }
 
     /**
-     *
+     * Sets the foreground, so the optimization can run longer than default 10 minutes
+     * Gets fresh data, then schedules a run for the next day
      */
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-
         // Notify the user that we're optimizing, and we'll notify once done
-        setForeground(createForegroundInfo(OPTIMIZATION_NOTIFICATION_START))
+        setForeground(createForegroundInfo())
         Log.i(TAG, "Performing daily optimization")
 
         try {
 
-//            val elapsed = measureTimeMillis {
-            // Call getFreshData which automatically saves
-            val data = mOrchestrator.getFreshData()
-            if (data != null){
-                Log.i(TAG, "Successfully got fresh data with work manager")
-            }
-            else {
-                Log.d(TAG, "Null data received")
-            }
-//            }; Log.i(TAG, "Total time taken using WorkManager: $elapsed")
+            val elapsed = measureTimeMillis {
+                // Get fresh data from the network
+                val data = mOrchestrator.getFreshData()
+                if (data != null) {
+                    Log.i(TAG, "Successfully got fresh data with work manager")
+                } else {
+                    Log.d(TAG, "Null data received")
+                }
+            }; Log.i(TAG, "Total time taken using WorkManager: $elapsed")
 
             // Schedule the next run at 01:30am the next day
             val currentDate = Calendar.getInstance()
             val dueDate = Calendar.getInstance()
 
-            dueDate.set(Calendar.HOUR_OF_DAY, PERIODIC_OPTIMIZATION_HOUR)
-            dueDate.set(Calendar.MINUTE, PERIODIC_OPTIMIZATION_MINUTE)
-            dueDate.set(Calendar.SECOND, PERIODIC_OPTIMIZATION_SECOND)
+            dueDate.set(Calendar.HOUR_OF_DAY, DAILY_OPTIMIZATION_HOUR)
+            dueDate.set(Calendar.MINUTE, DAILY_OPTIMIZATION_MINUTE)
+            dueDate.set(Calendar.SECOND, DAILY_OPTIMIZATION_SECOND)
 
             // If we're already past the time today, schedule the next one for tomorrow
             if (dueDate.before(currentDate)) {
@@ -149,76 +147,41 @@ class DailyOptimizationWorker (appContext: Context, workerParams: WorkerParamete
             }
             val timeDiff = dueDate.timeInMillis - currentDate.timeInMillis
 
+            // Create next work request
             val dailyOptimizationWorkRequest = OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
                 .setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
                 .setConstraints(WORK_MANAGER_CONSTRAINTS)
-                .addTag(TAG_OUTPUT)
+                .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
                 .build()
+
             WorkManager.getInstance(applicationContext)
                 .enqueueUniqueWork(
-                    PERIODIC_OPTIMIZATION_WORK_NAME,
+                    DAILY_OPTIMIZATION_WORK_NAME,
                     ExistingWorkPolicy.KEEP,
-                    dailyOptimizationWorkRequest)
+                    dailyOptimizationWorkRequest
+                )
 
-//            makeStatusNotification(OPTIMIZATION_NOTIFICATION_SUCCEEDED)
+            // Notify the user of successful optimization
             showNotification(
-                createNotification(OPTIMIZATION_NOTIFICATION_SUCCEEDED, false, null)
+                createNotification(
+                    applicationContext.getString(R.string.optimization_succeeded_notification),
+                    false,
+                    null
+                )
             )
             Result.success()
-        }
-        catch (e: Exception) {
-//            makeStatusNotification(OPTIMIZATION_NOTIFICATION_FAILED)
+        } catch (e: Exception) {
+            // Notify the user of failed optimization
             showNotification(
-                createNotification(OPTIMIZATION_NOTIFICATION_FAILED, false, null)
+                createNotification(
+                    applicationContext.getString(R.string.optimization_failed_notification),
+                    false,
+                    null
+                )
             )
             Log.e(TAG, "Error updating user data", e)
             Result.failure()
         }
     }
-
-//    /**
-//     * Create a Notification that is shown as a heads-up notification if possible.
-//     *
-//     * For this codelab, this is used to show a notification so that you know when different steps
-//     * of the background work chain are starting
-//     *
-//     * @param message Message shown on the notification
-//     * @param context Context needed to create Toast
-//     */
-//    private fun makeStatusNotification(message: String) {
-//
-//        // Make a channel if necessary
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            // Create the NotificationChannel, but only on API 26+ because
-//            // the NotificationChannel class is new and not in the support library
-//            val name = VERBOSE_NOTIFICATION_CHANNEL_NAME
-//            val description = VERBOSE_NOTIFICATION_CHANNEL_DESCRIPTION
-//            val importance = NotificationManager.IMPORTANCE_HIGH
-//            val channel = NotificationChannel(CHANNEL_ID, name, importance)
-//            channel.description = description
-//
-//            // Add the channel
-//            val notificationManager =
-//                applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
-//
-//            notificationManager?.createNotificationChannel(channel)
-//        }
-//
-//        // Create the notification
-//        val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-//            .setSmallIcon(R.mipmap.ic_launcher)
-//            .setContentTitle(NOTIFICATION_TITLE)
-//            .setContentText(message)
-//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-//            .setVibrate(LongArray(0))
-//            .setTimeoutAfter(NOTIFICATION_DURATION)
-//            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-//            .setAutoCancel(true)
-//
-//
-//
-//        // Show the notification
-//        NotificationManagerCompat.from(applicationContext).notify(NOTIFICATION_ID, builder.build())
-//    }
 
 }

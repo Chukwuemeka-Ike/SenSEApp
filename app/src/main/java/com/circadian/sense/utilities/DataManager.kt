@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.security.crypto.EncryptedFile
 import androidx.security.crypto.MasterKey
+import com.circadian.sense.DATE_PATTERN
 import net.openid.appauth.connectivity.ConnectionBuilder
 import okio.IOException
 import org.json.JSONArray
@@ -24,7 +25,7 @@ import java.time.format.DateTimeFormatter
  * Data manager class that takes care of saving and loading data from local
  * Data is in encrypted key-value format
  */
-class DataManager (private val context: Context) {
+class DataManager(private val context: Context) {
 
     /**
      * Clears user data
@@ -33,8 +34,7 @@ class DataManager (private val context: Context) {
         try {
             context.deleteFile(mDataFile)
             Log.i(TAG, "Successfully deleted user data")
-        }
-        catch (e: Exception){
+        } catch (e: Exception) {
             Log.e(TAG, "Failed to delete user data with exception: $e")
         }
     }
@@ -58,7 +58,6 @@ class DataManager (private val context: Context) {
             bufferReader.close()
 
 
-
 //            // Load the string into a JSONObject, then collect the components
 //            val file = File(context.filesDir, mDataFile)
 //            val jsonData = JSONObject(file.readText())
@@ -76,25 +75,23 @@ class DataManager (private val context: Context) {
             val y = FloatArray(dataLength)
             val yHat = FloatArray(dataLength)
 
-            for (i in 0 until dataLength){
+            for (i in 0 until dataLength) {
                 t[i] = tJSON.getDouble(i).toFloat()
                 y[i] = yJSON.getDouble(i).toFloat()
                 yHat[i] = yHatJSON.getDouble(i).toFloat()
             }
 
             val gains = FloatArray(gainsLength)
-            for ( i in 0 until gainsLength){
+            for (i in 0 until gainsLength) {
                 gains[i] = gainsJSON.getDouble(i).toFloat()
             }
 
             Log.i(TAG, "Successfully loaded data")
-            DataPack(t, y, yHat,dataTimestamp,gains,gainsTimestamp)
-        }
-        catch (exception: IOException) {
+            DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
+        } catch (exception: IOException) {
             Log.d(TAG, exception.message ?: "")
             return null
-        }
-        catch (e: Exception) {
+        } catch (e: Exception) {
             Log.e(TAG, "$e")
             null
         }
@@ -123,7 +120,9 @@ class DataManager (private val context: Context) {
 
             // Overwriting wasn't working, so manually deleting the value first
             val file = File(context.filesDir, mDataFile)
-            if (file.exists()) { file.delete() }
+            if (file.exists()) {
+                file.delete()
+            }
 
             val b = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
             val encryptedFile = EncryptedFile.Builder(
@@ -151,22 +150,29 @@ class DataManager (private val context: Context) {
      * allow any other way to do this)
      *
      */
-    fun fetchMultiDayData(numDays: Int, userId: String, accessToken: String, configuration: Configuration): List<FloatArray>? {
+    fun fetchMultiDayData(
+        numDays: Int,
+        userId: String,
+        accessToken: String,
+        configuration: Configuration
+    ): List<FloatArray>? {
         val userInfoEndpoint = configuration.getUserInfoEndpointUri()
 
         // Chain together numDays API calls
         val today = LocalDateTime.now()
-        val formatter = DateTimeFormatter.ofPattern(datePattern)
+        val formatter = DateTimeFormatter.ofPattern(DATE_PATTERN)
         val multiDays = (numDays downTo 1)
         val y = mutableListOf<Float>()
 
-        for (i in multiDays){
+        for (i in multiDays) {
             val date = today.minusDays(i.toLong()).format(formatter)
 
-            val userDataRequestURL = Uri.parse("$userInfoEndpoint/${userId}/activities/heart/date/${date}/1d/1min.json")
+            val userDataRequestURL =
+                Uri.parse("$userInfoEndpoint/${userId}/activities/heart/date/${date}/1d/1min.json")
             Log.i(TAG, userDataRequestURL.toString())
 
-            val oneDayData = fetchSingleDayData(configuration.connectionBuilder, userDataRequestURL, accessToken)
+            val oneDayData =
+                fetchSingleDayData(configuration.connectionBuilder, userDataRequestURL, accessToken)
             oneDayData!![1].forEach {
                 y.add(it)
             }
@@ -178,22 +184,25 @@ class DataManager (private val context: Context) {
         // repetitions of 00:00 to 23:59. This messes with graphing
         val t = FloatArray(dataLength)
         for (i in 0 until dataLength) {
-            if (i == 0){
+            if (i == 0) {
                 t[i] = 0F
-            }
-            else{
-                t[i] = t[i-1]+0.0167F
+            } else {
+                t[i] = t[i - 1] + 0.0167F
             }
         }
 
-        return listOf(t,y.toFloatArray())
+        return listOf(t, y.toFloatArray())
     }
 
     /**
      *
      */
-    private fun fetchSingleDayData(connectionBuilder: ConnectionBuilder, userDataRequestURL: Uri, accessToken: String): List<FloatArray>? {
-        try{
+    private fun fetchSingleDayData(
+        connectionBuilder: ConnectionBuilder,
+        userDataRequestURL: Uri,
+        accessToken: String
+    ): List<FloatArray>? {
+        try {
             val conn: HttpURLConnection =
                 connectionBuilder.openConnection(userDataRequestURL)
             conn.requestMethod = "GET"
@@ -224,12 +233,11 @@ class DataManager (private val context: Context) {
 
                 return parseUserData(response.toString())
             } else {
-                Log.i(TAG,"GET request failed")
+                Log.i(TAG, "GET request failed")
                 conn.disconnect()
                 return null
             }
-        }
-        catch (ioEx: IOException) {
+        } catch (ioEx: IOException) {
             Log.e(TAG, "IOException", ioEx)
             return null
         } catch (jsonEx: JSONException) {
@@ -261,7 +269,7 @@ class DataManager (private val context: Context) {
         var startIdx = 0
         var realIdx = 0
         var wantIdx = 0
-        val timeIncrement = (1F/60F)
+        val timeIncrement = (1F / 60F)
 
         // Check first timestamp
         if (firstTimestamp != minuit) {
@@ -269,45 +277,44 @@ class DataManager (private val context: Context) {
             Log.i(TAG, "$startIdx")
         }
 
-        while (wantIdx < startIdx){
+        while (wantIdx < startIdx) {
             if (wantIdx > 0) {
                 t[wantIdx] = t[wantIdx - 1] + timeIncrement
             }
             wantIdx += 1
         }
 
-        while (wantIdx < t.size && realIdx < dataLength){
+        while (wantIdx < t.size && realIdx < dataLength) {
             val dataPoint = activitiesIntradayDataset.getJSONObject(realIdx)
 
-            if (wantIdx == startIdx){
+            if (wantIdx == startIdx) {
                 y[wantIdx] = dataPoint.getDouble("value").toFloat()
-            }
-            else if (wantIdx > startIdx){
+            } else if (wantIdx > startIdx) {
                 val prevTime = LocalTime.parse(
-                    activitiesIntradayDataset.getJSONObject(realIdx-1).getString("time")
+                    activitiesIntradayDataset.getJSONObject(realIdx - 1).getString("time")
                 )
                 val curTime = LocalTime.parse(dataPoint.getString("time"))
-                val timeDiff = Duration.between(prevTime,curTime).toMinutes().toInt()
+                val timeDiff = Duration.between(prevTime, curTime).toMinutes().toInt()
 
-                if (timeDiff > 1 ){
-                    val futureWantIdx = wantIdx + timeDiff-1
-                    while (wantIdx < futureWantIdx){
-                        t[wantIdx] = t[wantIdx-1] + timeIncrement
+                if (timeDiff > 1) {
+                    val futureWantIdx = wantIdx + timeDiff - 1
+                    while (wantIdx < futureWantIdx) {
+                        t[wantIdx] = t[wantIdx - 1] + timeIncrement
                         wantIdx += 1
                     }
                 }
                 y[wantIdx] = dataPoint.getDouble("value").toFloat()
             }
 
-            if (wantIdx > 0){
-                t[wantIdx] = t[wantIdx-1] + timeIncrement
+            if (wantIdx > 0) {
+                t[wantIdx] = t[wantIdx - 1] + timeIncrement
             }
             realIdx += 1
             wantIdx += 1
         }
 
-        while (wantIdx < t.size){
-            t[wantIdx] = t[wantIdx-1] + timeIncrement
+        while (wantIdx < t.size) {
+            t[wantIdx] = t[wantIdx - 1] + timeIncrement
             wantIdx += 1
         }
 
@@ -324,7 +331,6 @@ class DataManager (private val context: Context) {
         private const val gainsTimestampKey = "gainsTimestamp"
         private const val mActivitiesIntradayKey = "activities-heart-intraday"
         private const val mDatasetKey = "dataset"
-        private const val datePattern = "yyyy-MM-dd"
         private const val TAG = "DataManager"
     }
 }

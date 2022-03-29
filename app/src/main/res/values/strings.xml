@@ -69,5 +69,14 @@
     <string name="maximize_button_name">Fullscreen Button</string>
     <string name="minimize_fullscreen_description">Minimize fullscreen</string>
     <string name="rensselaer_polytechnic_institute_logo_content_description">Rensselaer Polytechnic Institute logo</string>
+    <string name="feedback_pref_tag">feedback</string>
+    <string name="no_auth_state_retained_exception">No authorization state retained - reauthorization required</string>
+    <string name="cancelled_logout_dialog">Logout cancelled</string>
+    <string name="initiated_logout_dialog">Logout initiated</string>
+    <string name="cancel_optimization_button">Cancel optimization</string>
+    <string name="optimization_ongoing_notification">We\'re optimizing the filter on your data. This can take up to 15 minutes, so we\'ll notify you once it\'s done.</string>
+    <string name="optimization_succeeded_notification">Successfully updated the filter with new data</string>
+    <string name="optimization_failed_notification">The filter update failed</string>
+    <string name="optimization_notification_title">Updating the filter with fresh data</string>
 
 </resources>
