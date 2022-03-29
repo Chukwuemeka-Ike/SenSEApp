@@ -11,21 +11,21 @@ import android.view.ViewGroup
 import android.widget.CheckBox
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.circadian.sense.R
+import com.circadian.sense.TAG_OUTPUT
 import com.circadian.sense.databinding.FragmentVisualizationBinding
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
-import com.circadian.sense.utilities.DataManager
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.formatter.IAxisValueFormatter
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import java.text.SimpleDateFormat
-import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.TimeUnit
 import android.content.res.Configuration as resConfiguration
@@ -51,10 +51,7 @@ class VisualizationFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-
-//        vizViewModel = VisualizationViewModel(requireActivity().application)
-        Log.i(TAG, vizViewModel.chartData.value.toString())
+    ): View {
 
         // Set the ViewBinding
         _binding = FragmentVisualizationBinding.inflate(inflater, container, false)
@@ -69,7 +66,6 @@ class VisualizationFragment : Fragment() {
 //        val optimizeButton = binding.optimizeButton     // Optimize button
         val loadingContainer = binding.loadingContainer     // Loading container with progress bar
         val maximizeButton = binding.maximizeButton
-        maximizeButton.isEnabled = false
         mVizChart = binding.visualizationChart           // The chart for data visualization
 
         if (mAuthStateManager.current.isAuthorized && !mConfiguration.hasConfigurationChanged()){
@@ -79,7 +75,9 @@ class VisualizationFragment : Fragment() {
             displayNotAuthorized()
         }
 
+        // Preliminary view setup
         // Set the maximize button according to the user theme
+        maximizeButton.isEnabled = false
         val nightMod =
             this.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
         if (nightMod == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
@@ -87,44 +85,47 @@ class VisualizationFragment : Fragment() {
         } else {
             maximizeButton.setBackgroundResource(R.drawable.ic_baseline_open_in_full_24_dark)
         }
-
-        // Preliminary view setup
         loadingContainer.visibility = View.GONE
         rawDataCheckBox.isEnabled = false
         filteredDataCheckBox.isEnabled = false
+
         rawDataCheckBox.setOnClickListener {
             makeDataVisible(rawDataCheckBox)
         }
         filteredDataCheckBox.setOnClickListener {
             makeDataVisible(filteredDataCheckBox)
         }
-
 //        optimizeButton.setOnClickListener {
 //            mVizChart.setNoDataText("") // Empty string
 //            loadingContainer.visibility = View.VISIBLE
 //            vizViewModel.runWorkflow()  //
 //        }
-
         maximizeButton.setOnClickListener {
             startActivity(
                 Intent(
                     requireContext(), VisualizationActivity::class.java
-                )//.putExtra("dd", vizViewModel.filterData)
+                )
             )
-
-//            val bundle = Bundle()
-//            bundle.putSerializable("Chart Data", vizViewModel.chartData.value?.toArray())
-//
-//            startActivity(
-//                Intent(
-//                    activity, VisualizationActivity::class.java
-//                ).putExtras(bundle)
-//            )
-//            val intent = Intent(this, VisualizationActivity::class.java).apply {
-//                putExtra(EXTRA_MESSAGE, response)
-//            }
-//            startActivity(intent)
         }
+
+        WorkManager.getInstance(requireContext()).getWorkInfosByTagLiveData(TAG_OUTPUT)
+            .observe(viewLifecycleOwner) { workInfos ->
+                if(workInfos.isNotEmpty() && mVizChart.data == null){
+                    if (workInfos[0] != null && workInfos[0].state == WorkInfo.State.SUCCEEDED) {
+                        Log.i(TAG, "Work Infos not empty, and successful work state, so creating chart dataset")
+                        vizViewModel.createChartDataset()
+                    }
+                }
+            }
+//        // Observer the WorkRequest
+//        WorkManager.getInstance(requireContext()).getWorkInfoByIdLiveData(vizViewModel.optimizeWorkRequest.id)
+//            .observe(viewLifecycleOwner) { workInfo ->
+//                if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
+//                    val outputDDdata = workInfo.outputData
+//
+//                    vizViewModel.createChartDataset()
+//                }
+//            }
 
         // Observe the data we need for mVizChart
         vizViewModel.chartData.observe(viewLifecycleOwner) {
@@ -144,7 +145,6 @@ class VisualizationFragment : Fragment() {
             mChartDataSets = it
             mVizChart.data = LineData(mChartDataSets)
             mVizChart.invalidate()
-            Log.i(TAG, "Dataset: ${mVizChart.data.dataSets[1].xMax}")
         }
 
         return root
@@ -170,11 +170,6 @@ class VisualizationFragment : Fragment() {
     private fun displayNotAuthorized() {
         binding.authorizedViz.visibility = View.GONE
         binding.notAuthorizedViz.visibility = View.VISIBLE
-//        Toast.makeText(
-//            requireContext().applicationContext,
-//            "User is not authorized",
-//            Toast.LENGTH_SHORT
-//        ).show()
     }
 
     /**
@@ -196,7 +191,7 @@ class VisualizationFragment : Fragment() {
         val leftAxis = mVizChart.axisLeft
         leftAxis.typeface = tf
         leftAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART)
-        leftAxis.spaceTop = 15f
+        leftAxis.spaceTop = 20f
 
         val xAxis = mVizChart.xAxis
         xAxis.isEnabled = true
@@ -231,8 +226,7 @@ class VisualizationFragment : Fragment() {
 
     /**
      * Makes the data visible according to whether each checkbox is checked
-     * params:
-     * [v] - the checkbox that was clicked
+     * @param [v] - the checkbox that was clicked
      */
     private fun makeDataVisible(v:CheckBox){
         when (v.id){

@@ -27,17 +27,10 @@ import kotlin.collections.ArrayList
 class VisualizationActivity : AppCompatActivity() {
     private val TAG = "VisualizationActivity"
 
-//    private val vizViewModel: VisualizationViewModel
     private lateinit var binding: ActivityVisualizationBinding
 
     private lateinit var mVizChart: LineChart
     private lateinit var mChartDataSets: ArrayList<ILineDataSet>
-//    private lateinit var mAuthStateManager: AuthStateManager
-//    private lateinit var mConfiguration: Configuration
-//    private lateinit var mAuthService: AuthorizationService
-//    private lateinit var mOBF: ObserverBasedFilter
-//    private lateinit var mDataManager: DataManager
-//    private lateinit var mOrchestrator: Orchestrator
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,19 +68,7 @@ class VisualizationActivity : AppCompatActivity() {
 
         val vizViewModel: VisualizationViewModel by viewModels()
 
-//        mAuthStateManager = AuthStateManager.getInstance(application.applicationContext)
-//        mConfiguration = Configuration.getInstance(application.applicationContext)
-//        mAuthService = AuthorizationService(application.applicationContext)
-//        mOBF = ObserverBasedFilter()
-//        mDataManager = DataManager(application.applicationContext)
-//        mOrchestrator = Orchestrator(
-//            mAuthStateManager,
-//            mConfiguration,
-//            mAuthService,
-//            mDataManager,
-//            mOBF
-//        )
-        vizViewModel.runWorkflow()
+        vizViewModel.createChartDataset()
 
         // Observe the data we need for mVizChart
         vizViewModel.chartData.observe(this) {
@@ -125,7 +106,7 @@ class VisualizationActivity : AppCompatActivity() {
         val leftAxis = mVizChart.axisLeft
         leftAxis.typeface = tf
         leftAxis.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
-        leftAxis.spaceTop = 15f
+        leftAxis.spaceTop = 20f
 
         val xAxis = mVizChart.xAxis
         xAxis.isEnabled = true

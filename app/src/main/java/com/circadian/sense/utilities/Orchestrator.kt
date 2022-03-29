@@ -2,6 +2,7 @@ package com.circadian.sense.utilities
 
 import android.content.Context
 import android.util.Log
+import com.circadian.sense.NUM_DAYS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,7 +22,6 @@ class Orchestrator(
     ) {
 
     private val TAG = "Orchestrator"
-    private val numDays = 8
     private val mAuthStateManager: AuthStateManager
     private val mConfiguration: Configuration
     private val mAuthService: AuthorizationService
@@ -29,7 +29,6 @@ class Orchestrator(
     private val mDataManager: DataManager
 
     init {
-        Log.i(TAG, "Optimization Worker created")
         mAuthStateManager = AuthStateManager.getInstance(mContext)
         mConfiguration = Configuration.getInstance(mContext)
         mAuthService = AuthorizationService(mContext)
@@ -37,6 +36,11 @@ class Orchestrator(
         mDataManager = DataManager(mContext)
     }
 
+    /**
+     * Returns saved data if it is current, or requests data, runs the filter and
+     * returns the new data
+     * @return DataPack(t, y, yHat)
+     */
     suspend fun getFreshData(): DataPack? {
         if (!mAuthStateManager.current.isAuthorized){
             return null
@@ -52,8 +56,6 @@ class Orchestrator(
         // Load previously saved data
         val filterData = mDataManager.loadData()
         var newData: List<FloatArray>? = null
-
-        Log.i(TAG,"AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
 
         // If we have no data at all, request and save new data
         if (filterData == null){
@@ -94,10 +96,10 @@ class Orchestrator(
             Log.i(TAG, "Data timestamp: ${filterData.dataTimestamp}")
             Log.i(TAG, "Gains timestamp: ${filterData.gainsTimestamp}")
 
-            // If gains are fresh, finishUp
+            // If gains are fresh, return the DataPack directly. No need to re-save what's current
             if (filterData.gainsTimestamp > weekAgoString){
                 Log.i(TAG, "Fresh gains, finishing up")
-                return finishUp(filterData.t, filterData.y, filterData.yHat, filterData.dataTimestamp, filterData.gains, filterData.gainsTimestamp)
+                return DataPack(filterData.t, filterData.y, filterData.yHat, filterData.dataTimestamp, filterData.gains, filterData.gainsTimestamp)
             }
             else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
@@ -143,7 +145,7 @@ class Orchestrator(
                 CoroutineScope(it.context).launch(Dispatchers.IO) {
                     it.resume(
                         mDataManager.fetchMultiDayData(
-                            numDays,
+                            NUM_DAYS,
                             userId!!,
                             accessToken!!,
                             mConfiguration
@@ -155,14 +157,15 @@ class Orchestrator(
 
 
     /**
-     *
+     * Creates a DataPack from
+     * @return data - DataPack containing the data
      */
     private suspend fun finishUp(t: FloatArray, y: FloatArray, yHat: FloatArray, dataTimestamp: String, L: FloatArray, gainsTimestamp: String): DataPack? {
-        Log.i(TAG, "Finishing up")
         return try {
+            //
             val data = DataPack(t, y, yHat, dataTimestamp, L, gainsTimestamp)
-            // Save the data to file
             withContext(Dispatchers.IO) {
+                // Save the data to file
                 mDataManager.writeData(data)
             }
             data
@@ -171,7 +174,6 @@ class Orchestrator(
             Log.e(TAG, "Unable to return fresh data: $e")
             null
         }
-
     }
 
 }

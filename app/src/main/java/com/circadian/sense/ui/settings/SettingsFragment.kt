@@ -17,13 +17,19 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_LIGHT
+import androidx.fragment.app.activityViewModels
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import com.circadian.sense.MainActivity
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.circadian.sense.*
 import com.circadian.sense.R
+import com.circadian.sense.ui.visualization.VisualizationViewModel
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
 import com.circadian.sense.utilities.DataManager
+import com.circadian.sense.utilities.DailyOptimizationWorker
 import net.openid.appauth.*
 import org.json.JSONException
 import java.io.IOException
@@ -99,6 +105,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         )
         mDataManager = DataManager(requireContext().applicationContext)
 
+//        WorkManager.getInstance(requireContext().applicationContext).cancelAllWork()
 
         // Login and Logout preferences
         loginPreference = findPreference(getString(R.string.login_pref_tag))
@@ -417,7 +424,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         tokenResponse: TokenResponse?,
         authException: AuthorizationException?
     ) {
-
         mAuthStateManager.updateAfterTokenResponse(tokenResponse, authException)
         requireActivity().runOnUiThread { displayAuthorized() }
     }
@@ -439,7 +445,27 @@ class SettingsFragment : PreferenceFragmentCompat() {
             requireActivity().runOnUiThread { displayNotAuthorized(message) }
         } else {
             requireActivity().runOnUiThread { displayAuthorized() }
+
+            // Once we're authorized, run the first optimization
+            initiatePeriodicOptimizations()
         }
+    }
+
+
+    /**
+     *
+     */
+    private fun initiatePeriodicOptimizations() {
+        val dailyOptimizationWorkRequest =
+            OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
+                .setConstraints(WORK_MANAGER_CONSTRAINTS)
+                .addTag(TAG_OUTPUT)
+                .build()
+        WorkManager.getInstance(requireContext().applicationContext)
+            .enqueueUniqueWork(
+                PERIODIC_OPTIMIZATION_WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                dailyOptimizationWorkRequest)
     }
 
 
@@ -497,7 +523,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
         if (mAuthStateManager.current.needsTokenRefresh) {
             refreshAccessToken()
         }
+        // Clear user data and remove any existing WorkRequests
         mDataManager.clearData()
+        WorkManager.getInstance(requireContext().applicationContext).cancelAllWork()
+        val vizViewModel: VisualizationViewModel by activityViewModels()
+//        vizViewModel.clearChartData()
+//        requireActivity().viewModelStore.clear()
 
         mExecutor.submit {
             try {
@@ -600,6 +631,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
         Toast.makeText(requireContext(), "Authorization successful", Toast.LENGTH_SHORT).show()
         Log.i(TAG, "Authorization successful")
     }
+
+
 
 
 }

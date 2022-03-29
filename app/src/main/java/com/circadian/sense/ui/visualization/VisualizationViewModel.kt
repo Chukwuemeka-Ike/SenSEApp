@@ -7,9 +7,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.WorkRequest
+import com.circadian.sense.NUM_DAYS
+import com.circadian.sense.TAG_OUTPUT
+import com.circadian.sense.YHAT_LABEL
+import com.circadian.sense.Y_LABEL
 import com.circadian.sense.utilities.*
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineDataSet
@@ -17,62 +19,59 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.openid.appauth.AuthorizationService
 import java.time.LocalDate
-import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import kotlin.system.measureTimeMillis
 
 class VisualizationViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "VizViewModel"
-    private val mAuthStateManager: AuthStateManager
-    private val mConfiguration: Configuration
-    private val mAuthService: AuthorizationService
-    private val mOBF: ObserverBasedFilter
-    private val mDataManager: DataManager
     private val mOrchestrator: Orchestrator
+    private val mDataManager: DataManager
 
     private val _chartDataset = MutableLiveData<ArrayList<ILineDataSet>>()
     val chartData: LiveData<ArrayList<ILineDataSet>> = _chartDataset
 
-    private val workManager = WorkManager.getInstance(application)
-    val optimizeWorkRequest: WorkRequest =
-        OneTimeWorkRequestBuilder<OptimizationWorker>().build()
-
+//    private val workManager = WorkManager.getInstance(application)
+//    private val constraints = Constraints.Builder()
+//        .setRequiredNetworkType(NetworkType.CONNECTED)
+//        .build()
+//    private val _optimizeWorkRequest: WorkRequest =
+//        OneTimeWorkRequestBuilder<OptimizationWorker>()
+//            .setConstraints(constraints)
+//            .build()
+//    val optimizeWorkRequest: WorkRequest get() = _optimizeWorkRequest
+//
+//    private val ddWR: WorkRequest =
+//        PeriodicWorkRequestBuilder<OptimizationWorker>(19, TimeUnit.HOURS)
+//            .build()
 
     init {
-        Log.i(TAG, "Creating VisualizationViewModel")
-        mAuthStateManager = AuthStateManager.getInstance(application.applicationContext)
-        mConfiguration = Configuration.getInstance(application.applicationContext)
-        mAuthService = AuthorizationService(application.applicationContext)
-        mOBF = ObserverBasedFilter()
-        mDataManager = DataManager(application.applicationContext)
-//        mOrchestrator = Orchestrator(
-//            mAuthStateManager,
-//            mConfiguration,
-//            mAuthService,
-//            mDataManager,
-//            mOBF
-//        )
+        Log.i(TAG, "Creating VizViewModel")
         mOrchestrator = Orchestrator(application.applicationContext)
-//        runWorkflow()
-        workManager.enqueue(optimizeWorkRequest)
+        mDataManager = DataManager(application.applicationContext)
+//        getFreshData()
+        createChartDataset()
     }
 
-    fun runWorkflow(){
+//    fun getFreshData() {
+//        Log.i(TAG, "Getting fresh data")
+//        workManager.enqueue(optimizeWorkRequest)
+//    }
+
+    fun createChartDataset() {
+        Log.i(TAG, "Creating chart dataset")
         viewModelScope.launch {
-            withContext(Dispatchers.IO){
-                val elapsed = measureTimeMillis {
-                    Log.i(TAG, "ViewModel thread: ${Thread.currentThread().name}")
-                    Log.i(TAG, "AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
-                    val data = mOrchestrator.getFreshData()
-                    Log.i(TAG, "It didn't all blow up!")
-                    if (data != null) {
-                            withContext(Dispatchers.Main){
-                                _chartDataset.value = createChartDataset(data.t, data.y, data.yHat)
-                            }
+            withContext(Dispatchers.IO) {
+//            val elapsed = measureTimeMillis {
+//                val data = mOrchestrator.getFreshData()
+                val data = mDataManager.loadData()
+                if (data != null) {
+                    withContext(Dispatchers.Main) {
+                        _chartDataset.value = createChartDataset(data.t, data.y, data.yHat)
                     }
-                }; Log.i(TAG, "Total time taken: $elapsed")
+                }
+//            }; Log.i(TAG, "Total time taken creating chart data: $elapsed")
             }
         }
     }
@@ -112,29 +111,26 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         val zeroFreeY = eliminateZeros(y)
         Log.i(TAG, "End t: ${t.last()}, ${t.size}")
 
-        val day1EpochInMillis = LocalDate.now().minusDays(numDays).toEpochDay()*24*60*60*1000 // TODO: Hacky. In millis
-        Log.i(TAG, "14 Days ago millis: ${day1EpochInMillis}")
-
-        val day1EpochInMinutes = TimeUnit.MILLISECONDS.toMinutes(day1EpochInMillis)
-        Log.i(TAG, "14 Days ago mins: ${day1EpochInMinutes}")
+        val day1InMinutes = TimeUnit.SECONDS.toMinutes(
+            LocalDate.now()
+                .minusDays(NUM_DAYS.toLong())
+                .atStartOfDay(ZoneId.systemDefault())
+                .toEpochSecond()
+        )
+        Log.i(TAG, "$NUM_DAYS days ago in minutes: $day1InMinutes")
 
         val rawDataEntries = mutableListOf<Entry>()
         val filterDataEntries = mutableListOf<Entry>()
 
-        for(entry in t.indices){
-            val x = (day1EpochInMinutes+entry).toFloat()
-//            if(entry<10){
-//                Log.i(TAG, "x: ${x}")
-//            }
+        for (entry in t.indices) {
+            val x = (day1InMinutes + entry).toFloat()
             rawDataEntries.add(Entry(x, zeroFreeY[entry]))
             filterDataEntries.add(Entry(x, yHat[entry]))
-//            rawDataEntries.add(Entry(t[entry], zeroFreeY[entry]))
-//            filterDataEntries.add(Entry(t[entry], yHat[entry]))
         }
 
         val rawDataset = LineDataSet(
             rawDataEntries,
-            y_label
+            Y_LABEL
         )
         rawDataset.color = Color.rgb(37, 137, 245)
         rawDataset.setDrawCircles(false)
@@ -142,7 +138,7 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
 
         val filterDataset = LineDataSet(
             filterDataEntries,
-            yHat_label
+            YHAT_LABEL
         )
         filterDataset.color = Color.rgb(207, 19, 19)
         filterDataset.setDrawCircles(false)
@@ -155,10 +151,9 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         return dataSets
     }
 
-    companion object {
-        private const val y_label = "Heart Rate (BPM)"
-        private const val yHat_label = "Filtered Output"
-        private const val numDays = 8L
-    }
+//    fun clearChartData() {
+//        _chartDataset.
+//    }
+
 
 }
