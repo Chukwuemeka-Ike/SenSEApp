@@ -3,6 +3,9 @@ package com.circadian.sense.utilities
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.security.crypto.EncryptedFile
+import androidx.security.crypto.MasterKey
+import com.circadian.sense.DATE_PATTERN
 import net.openid.appauth.connectivity.ConnectionBuilder
 import okio.IOException
 import org.json.JSONArray
@@ -12,14 +15,29 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
+import java.nio.charset.StandardCharsets
+import java.time.Duration
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
  * Data manager class that takes care of saving and loading data from local
  * Data is in encrypted key-value format
  */
-class DataManager (private val context: Context) {
+class DataManager(private val context: Context) {
+
+    /**
+     * Clears user data
+     */
+    fun clearData() {
+        try {
+            context.deleteFile(mDataFile)
+            Log.i(TAG, "Successfully deleted user data")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete user data with exception: $e")
+        }
+    }
 
     /**
      * Loads the filter data from disk
@@ -27,9 +45,22 @@ class DataManager (private val context: Context) {
      */
     fun loadData(): DataPack? {
         return try {
-            // Load the string into a JSONObject, then collect the components
-            val file = File(context.filesDir, mDataFile)
-            val jsonData = JSONObject(file.readText())
+            val b = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+            val encryptedFile = EncryptedFile.Builder(
+                context,
+                File(context.filesDir, mDataFile),
+                b,
+                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+            ).build()
+
+            val bufferReader = encryptedFile.openFileInput().bufferedReader()
+            val jsonData = JSONObject(bufferReader.readText())
+            bufferReader.close()
+
+
+//            // Load the string into a JSONObject, then collect the components
+//            val file = File(context.filesDir, mDataFile)
+//            val jsonData = JSONObject(file.readText())
 
             val tJSON = jsonData.getJSONArray(timeKey)
             val yJSON = jsonData.getJSONArray(yKey)
@@ -44,19 +75,22 @@ class DataManager (private val context: Context) {
             val y = FloatArray(dataLength)
             val yHat = FloatArray(dataLength)
 
-            for (i in 0 until dataLength){
+            for (i in 0 until dataLength) {
                 t[i] = tJSON.getDouble(i).toFloat()
                 y[i] = yJSON.getDouble(i).toFloat()
                 yHat[i] = yHatJSON.getDouble(i).toFloat()
             }
 
             val gains = FloatArray(gainsLength)
-            for ( i in 0 until gainsLength){
+            for (i in 0 until gainsLength) {
                 gains[i] = gainsJSON.getDouble(i).toFloat()
             }
 
             Log.i(TAG, "Successfully loaded data")
-            DataPack(t, y, yHat,dataTimestamp,gains,gainsTimestamp)
+            DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
+        } catch (exception: IOException) {
+            Log.d(TAG, exception.message ?: "")
+            return null
         } catch (e: Exception) {
             Log.e(TAG, "$e")
             null
@@ -83,8 +117,28 @@ class DataManager (private val context: Context) {
                 |${dataTimestampKey}: ${dataTimestamp},
                 |${gainsTimestampKey}: ${gainsTimestamp}
             }""".trimMargin()
+
+            // Overwriting wasn't working, so manually deleting the value first
             val file = File(context.filesDir, mDataFile)
-            file.writeText(outputString)
+            if (file.exists()) {
+                file.delete()
+            }
+
+            val b = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+            val encryptedFile = EncryptedFile.Builder(
+                context,
+                File(context.filesDir, mDataFile),
+                b,
+                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+            ).build()
+
+            encryptedFile.openFileOutput().apply {
+                write(outputString.toByteArray(StandardCharsets.UTF_8))
+                flush()
+                close()
+            }
+
+//            file.writeText(outputString)
             Log.i(TAG, "Successfully saved data")
         } catch (e: Exception) {
             Log.e(TAG, "Write data failed: $e")
@@ -92,44 +146,63 @@ class DataManager (private val context: Context) {
     }
 
     /**
-     * Fetches 2 weeks of data by chaining together 14 Fitbit API calls (AFAIK, Fitbit doesn't
+     * Fetches numDays of data by chaining together numDays Fitbit API calls (AFAIK, Fitbit doesn't
      * allow any other way to do this)
      *
      */
-    fun fetchMultiDayData(numDays: Int, userId: String, accessToken: String, configuration: Configuration): List<FloatArray>? {
+    fun fetchMultiDayData(
+        numDays: Int,
+        userId: String,
+        accessToken: String,
+        configuration: Configuration
+    ): List<FloatArray>? {
         val userInfoEndpoint = configuration.getUserInfoEndpointUri()
 
-        // Chain together 14 API calls
+        // Chain together numDays API calls
         val today = LocalDateTime.now()
-        val formatter = DateTimeFormatter.ofPattern(datePattern)
-        val twoWeeks = 1..numDays
-        val twoWeekData = mutableListOf<List<FloatArray>?>()
-        val t = mutableListOf<Float>()
+        val formatter = DateTimeFormatter.ofPattern(DATE_PATTERN)
+        val multiDays = (numDays downTo 1)
         val y = mutableListOf<Float>()
 
-        for (i in twoWeeks){
+        for (i in multiDays) {
             val date = today.minusDays(i.toLong()).format(formatter)
-            val userDataRequestURL = Uri.parse("$userInfoEndpoint/${userId}/activities/heart/date/${date}/1d/1min.json")
+
+            val userDataRequestURL =
+                Uri.parse("$userInfoEndpoint/${userId}/activities/heart/date/${date}/1d/1min.json")
             Log.i(TAG, userDataRequestURL.toString())
-            val oneDayData = fetchSingleDayData(configuration.connectionBuilder, userDataRequestURL, accessToken)
-            Log.i(TAG, "Received single day data")
-            twoWeekData.add(oneDayData)
-            Log.i(TAG, "Added data to list")
-            oneDayData!![0].forEach {
-                t.add(it)
-            }
+
+            val oneDayData =
+                fetchSingleDayData(configuration.connectionBuilder, userDataRequestURL, accessToken)
             oneDayData!![1].forEach {
                 y.add(it)
             }
-
             Log.i(TAG, "Copied data into y and t. Next iteration")
         }
+        val dataLength = y.size
 
-        return listOf(t.toFloatArray(),y.toFloatArray())
+        // Create a continuous sequence of t values. newData currently returns numDays
+        // repetitions of 00:00 to 23:59. This messes with graphing
+        val t = FloatArray(dataLength)
+        for (i in 0 until dataLength) {
+            if (i == 0) {
+                t[i] = 0F
+            } else {
+                t[i] = t[i - 1] + 0.0167F
+            }
+        }
+
+        return listOf(t, y.toFloatArray())
     }
 
-    private fun fetchSingleDayData(connectionBuilder: ConnectionBuilder, userDataRequestURL: Uri, accessToken: String): List<FloatArray>? {
-        try{
+    /**
+     *
+     */
+    private fun fetchSingleDayData(
+        connectionBuilder: ConnectionBuilder,
+        userDataRequestURL: Uri,
+        accessToken: String
+    ): List<FloatArray>? {
+        try {
             val conn: HttpURLConnection =
                 connectionBuilder.openConnection(userDataRequestURL)
             conn.requestMethod = "GET"
@@ -156,15 +229,15 @@ class DataManager (private val context: Context) {
                 // print result
                 Log.i(TAG, response.toString())
                 conn.disconnect()
+                Log.i(TAG, "Closed connection")
 
                 return parseUserData(response.toString())
             } else {
-                Log.i(TAG,"GET request failed")
+                Log.i(TAG, "GET request failed")
                 conn.disconnect()
                 return null
             }
-        }
-        catch (ioEx: IOException) {
+        } catch (ioEx: IOException) {
             Log.e(TAG, "IOException", ioEx)
             return null
         } catch (jsonEx: JSONException) {
@@ -183,17 +256,66 @@ class DataManager (private val context: Context) {
         val activitiesIntradayDataset = activitiesIntradayValue.getJSONArray(mDatasetKey)
         val dataLength = activitiesIntradayDataset.length()
 
-        val t = FloatArray(dataLength)
-        val y = FloatArray(dataLength)
+        val minuit = LocalTime.parse("00:00:00")
+        val firstEntry = activitiesIntradayDataset.getJSONObject(0).getString("time")
+        val firstTimestamp = LocalTime.parse(firstEntry)
 
-        for (i in 0 until dataLength) {
-            if (i == 0){
-                t[i] = 0.0167F
+        val numPointsPerDay = 1440
+//        val numPointsTwoWeeks = numPointsPerDay*14
+
+        val t = FloatArray(numPointsPerDay)
+        val y = FloatArray(numPointsPerDay)
+
+        var startIdx = 0
+        var realIdx = 0
+        var wantIdx = 0
+        val timeIncrement = (1F / 60F)
+
+        // Check first timestamp
+        if (firstTimestamp != minuit) {
+            startIdx = Duration.between(minuit, firstTimestamp).toMinutes().toInt()
+            Log.i(TAG, "$startIdx")
+        }
+
+        while (wantIdx < startIdx) {
+            if (wantIdx > 0) {
+                t[wantIdx] = t[wantIdx - 1] + timeIncrement
             }
-            else{
-                t[i] = t[i-1]+0.0167F
+            wantIdx += 1
+        }
+
+        while (wantIdx < t.size && realIdx < dataLength) {
+            val dataPoint = activitiesIntradayDataset.getJSONObject(realIdx)
+
+            if (wantIdx == startIdx) {
+                y[wantIdx] = dataPoint.getDouble("value").toFloat()
+            } else if (wantIdx > startIdx) {
+                val prevTime = LocalTime.parse(
+                    activitiesIntradayDataset.getJSONObject(realIdx - 1).getString("time")
+                )
+                val curTime = LocalTime.parse(dataPoint.getString("time"))
+                val timeDiff = Duration.between(prevTime, curTime).toMinutes().toInt()
+
+                if (timeDiff > 1) {
+                    val futureWantIdx = wantIdx + timeDiff - 1
+                    while (wantIdx < futureWantIdx) {
+                        t[wantIdx] = t[wantIdx - 1] + timeIncrement
+                        wantIdx += 1
+                    }
+                }
+                y[wantIdx] = dataPoint.getDouble("value").toFloat()
             }
-            y[i] = activitiesIntradayDataset.getJSONObject(i).getString("value").toFloat()
+
+            if (wantIdx > 0) {
+                t[wantIdx] = t[wantIdx - 1] + timeIncrement
+            }
+            realIdx += 1
+            wantIdx += 1
+        }
+
+        while (wantIdx < t.size) {
+            t[wantIdx] = t[wantIdx - 1] + timeIncrement
+            wantIdx += 1
         }
 
         return listOf(t, y)
@@ -209,7 +331,6 @@ class DataManager (private val context: Context) {
         private const val gainsTimestampKey = "gainsTimestamp"
         private const val mActivitiesIntradayKey = "activities-heart-intraday"
         private const val mDatasetKey = "dataset"
-        private const val datePattern = "yyyy-MM-dd"
         private const val TAG = "DataManager"
     }
 }

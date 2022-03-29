@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.annotation.AnyThread
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import net.openid.appauth.*
 import org.json.JSONException
 import java.lang.ref.WeakReference
@@ -134,7 +136,15 @@ class AuthStateManager private constructor(context: Context) {
     }
 
     init {
-        mPrefs = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
+//        mPrefs = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
+        val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        mPrefs = EncryptedSharedPreferences.create(
+            context,
+            STORE_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
         mPrefsLock = ReentrantLock()
         mCurrentAuthState = AtomicReference()
     }

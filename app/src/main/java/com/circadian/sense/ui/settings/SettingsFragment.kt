@@ -19,10 +19,15 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_LIGHT
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import com.circadian.sense.MainActivity
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.circadian.sense.*
 import com.circadian.sense.R
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
+import com.circadian.sense.utilities.DailyOptimizationWorker
+import com.circadian.sense.utilities.DataManager
 import net.openid.appauth.*
 import org.json.JSONException
 import java.io.IOException
@@ -62,15 +67,18 @@ class SettingsFragment : PreferenceFragmentCompat() {
             val mainIntent = Intent(
                 requireContext().applicationContext, MainActivity::class.java
             )
-            .putExtras(authorizationExchangeResponse!!)
+                .putExtras(authorizationExchangeResponse!!)
             continueAuth(mainIntent)
             loginPreference?.isEnabled = false
             logoutPreference?.isEnabled = true
 
-            Log.i(TAG, "Received auth code from server. Starting MainActivity")
-        }
-        else {
-            Toast.makeText(requireContext(), "Authorization failed. Please retry", Toast.LENGTH_SHORT)
+            Log.i(TAG, "Received auth code from server. Continuing authentication.")
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Authorization failed. Please try again",
+                Toast.LENGTH_SHORT
+            )
             Log.i(TAG, "Authorization failed. Please retry")
         }
     }
@@ -100,29 +108,26 @@ class SettingsFragment : PreferenceFragmentCompat() {
         loginPreference = findPreference(getString(R.string.login_pref_tag))
         logoutPreference = findPreference(getString(R.string.logout_pref_tag))
 
-        // If authorized, disable loginPreference and enable logoutPreference - and vice versa
-        with(mAuthStateManager.current.isAuthorized){
+        // If we're authorized, disable loginPreference and enable logoutPreference - and vice versa
+        with(mAuthStateManager.current.isAuthorized) {
             loginPreference?.isEnabled = !this
             logoutPreference?.isEnabled = this
         }
 
         // Starts authorization workflow when login is clicked
-        loginPreference?.setOnPreferenceClickListener{
+        loginPreference?.setOnPreferenceClickListener {
             startAuth()
             true
         }
 
         // Logs the user out when clicked
-        logoutPreference?.setOnPreferenceClickListener{
+        logoutPreference?.setOnPreferenceClickListener {
             createLogOutDialog()
             true
         }
 
-//        val feedBack: Preference? = findPreference("feedback")
-//        feedBack?.setOnPreferenceClickListener {
-//            refreshAccessToken()
-//            true
-//        }
+        val feedBack: Preference? = findPreference(getString(R.string.feedback_pref_tag))
+        feedBack?.isEnabled = false
 
         // Start warming up the browser and auth process if not authorized
         if (!mAuthStateManager.current.isAuthorized) {
@@ -130,7 +135,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         // If invalid configuration, scream
-        if (!mConfiguration.isValid){
+        if (!mConfiguration.isValid) {
             displayError(mConfiguration.getConfigurationError()!!)
         }
 
@@ -141,8 +146,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             mAuthStateManager.replace(AuthState())
             mConfiguration.acceptConfiguration()
             Log.i(TAG, getString(R.string.configuration_has_changed))
-            Toast.makeText(requireContext(), getString(R.string.configuration_has_changed),
-                Toast.LENGTH_SHORT).show()
             displayNotAuthorized(getString(R.string.configuration_has_changed))
         }
 
@@ -192,6 +195,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private fun initializeAppAuth() {
         Log.i(TAG, "Initializing AppAuth")
         recreateAuthorizationService()
+
         if (mAuthStateManager.current.authorizationServiceConfiguration != null) {
             // configuration is already created, skip to client initialization
             Log.i(TAG, "auth config already established")
@@ -216,7 +220,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     /**
-     * Initiates a dynamic registration request if a client ID is not provided by the static
+     * Sets the static client ID to
      * configuration.
      */
     @WorkerThread
@@ -228,50 +232,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             requireActivity().runOnUiThread { this.initializeAuthRequest() }
             return
         }
-
-//        val lastResponse: RegistrationResponse? =
-//            mAuthStateManager.current.lastRegistrationResponse
-//        if (lastResponse != null) {
-//            Log.i(TAG, "Using dynamic client ID: " + lastResponse.clientId)
-//            // already dynamically registered a client ID
-//            mClientId.set(lastResponse.clientId)
-//            requireActivity().runOnUiThread { this.initializeAuthRequest() }
-//            return
-//        }
-//
-//        // WrongThread inference is incorrect for lambdas
-//        // noinspection WrongThread
-//        requireActivity().runOnUiThread { displayLoading("Dynamically registering client") }
-//        Log.i(TAG, "Dynamically registering client")
-//        val registrationRequest = RegistrationRequest.Builder(
-//            mAuthStateManager.current.authorizationServiceConfiguration!!,
-//            listOf(mConfiguration.getRedirectUri())
-//        ).setTokenEndpointAuthenticationMethod(ClientSecretBasic.NAME)
-//            .build()
-//        mAuthService.performRegistrationRequest(
-//            registrationRequest
-//        ) { response: RegistrationResponse?, ex: AuthorizationException? ->
-//            this.handleRegistrationResponse(
-//                response,
-//                ex
-//            )
-//        }
-    }
-
-    @MainThread
-    private fun handleRegistrationResponse(
-        response: RegistrationResponse?,
-        ex: AuthorizationException?
-    ) {
-        mAuthStateManager.updateAfterRegistration(response, ex)
-        if (response == null) {
-            Log.i(TAG, "Failed to dynamically register client", ex)
-            displayError("Failed to register client: " + ex!!.message)
-            return
-        }
-        Log.i(TAG, "Dynamically registered client: " + response.clientId)
-        mClientId.set(response.clientId)
-        initializeAuthRequest()
     }
 
     private fun recreateAuthorizationService() {
@@ -324,7 +284,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
      * Continues the authorization workflow with the intent received from
      * user login
      */
-    private fun continueAuth(intent: Intent){
+    private fun continueAuth(intent: Intent) {
         // Get the response and exception from the intent
         val response = AuthorizationResponse.fromIntent(intent)
         val ex = AuthorizationException.fromIntent(intent)
@@ -335,13 +295,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         // Exchange authorization code for tokens if it's available
-        if (response != null && response.authorizationCode != null) {
+        if (response?.authorizationCode != null) {
 //            mAuthStateManager.updateAfterAuthorization(response, ex)
             exchangeAuthorizationCode(response)
         } else if (ex != null) {
             displayNotAuthorized("Authorization flow failed: " + ex.message)
         } else {
-            displayNotAuthorized("No authorization state retained - reauthorization required")
+            displayNotAuthorized(getString(R.string.no_auth_state_retained_exception))
         }
     }
 
@@ -413,7 +373,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         tokenResponse: TokenResponse?,
         authException: AuthorizationException?
     ) {
-
         mAuthStateManager.updateAfterTokenResponse(tokenResponse, authException)
         requireActivity().runOnUiThread { displayAuthorized() }
     }
@@ -435,12 +394,30 @@ class SettingsFragment : PreferenceFragmentCompat() {
             requireActivity().runOnUiThread { displayNotAuthorized(message) }
         } else {
             requireActivity().runOnUiThread { displayAuthorized() }
+
+            // Once we're authorized, run the first optimization
+            initiatePeriodicOptimizations()
         }
     }
 
 
-
-
+    /**
+     * Creates the first WorkManager Optimization WorkRequest to optimize the
+     * filter on the user's data.
+     */
+    private fun initiatePeriodicOptimizations() {
+        val dailyOptimizationWorkRequest =
+            OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
+                .setConstraints(WORK_MANAGER_CONSTRAINTS)
+                .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
+                .build()
+        WorkManager.getInstance(requireContext().applicationContext)
+            .enqueueUniqueWork(
+                DAILY_OPTIMIZATION_WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                dailyOptimizationWorkRequest
+            )
+    }
 
 
     /**
@@ -457,14 +434,14 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 .setMessage(getString(R.string.logout_dialog_message))
                 .setPositiveButton( // User clicked yes button
                     getString(R.string.logout_dialog_positive),
-                    DialogInterface.OnClickListener { dialog, id ->
+                    DialogInterface.OnClickListener { _, _ ->
                         logOut()
-                        Log.i(TAG, "Logout initiated")
+                        Log.i(TAG, getString(R.string.initiated_logout_dialog))
                     })
                 .setNegativeButton( // User cancelled the dialog
                     getString(R.string.logout_dialog_negative),
-                    DialogInterface.OnClickListener { dialog, id ->
-                        Log.i(TAG, "Clicked no")
+                    DialogInterface.OnClickListener { _, _ ->
+                        Log.i(TAG, getString(R.string.cancelled_logout_dialog))
                     })
 
             // Create the AlertDialog
@@ -476,7 +453,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     /**
-    * Logs out the user by revoking app access to their data and
+     * Logs out the user by revoking app access to their data and
      */
     @MainThread
     private fun logOut() {
@@ -487,19 +464,32 @@ class SettingsFragment : PreferenceFragmentCompat() {
         //        Content-Type: application/x-www-form-urlencoded
         //        token=<access_token or refresh_token to be revoked>
 
-        val RevokeTokenEndpoint = Uri.parse(mConfiguration.getRevokeTokenEndpointUri().toString())
-
-        // Refresh access token first to ensure no issues with revoking
-        if (mAuthStateManager.current.needsTokenRefresh) {
-            refreshAccessToken()
-        }
-
+        // Offload all this to a separate thread
         mExecutor.submit {
+            val revokeTokenEndpoint = Uri.parse(
+                mConfiguration.getRevokeTokenEndpointUri().toString()
+            )
+
+            // Refresh access token first to ensure no issues with revoking
+            // TODO: Make this synchronous
+            if (mAuthStateManager.current.needsTokenRefresh) {
+                refreshAccessToken()
+            }
+
+            // Clear user data, remove any existing WorkRequests, and clear MainActivity's ViewModelStore
+            DataManager(requireContext().applicationContext).clearData()
+            WorkManager.getInstance(requireContext().applicationContext).cancelAllWork()
+            requireActivity().runOnUiThread { requireActivity().viewModelStore.clear() }
+
+            // Send revoke request to Fitbit servers
             try {
                 val conn: HttpURLConnection =
-                    mConfiguration.connectionBuilder.openConnection( RevokeTokenEndpoint )
+                    mConfiguration.connectionBuilder.openConnection(revokeTokenEndpoint)
                 conn.requestMethod = "POST"
-                conn.setRequestProperty("Authorization", "Bearer ${mAuthStateManager.current.accessToken}")
+                conn.setRequestProperty(
+                    "Authorization",
+                    "Bearer ${mAuthStateManager.current.accessToken}"
+                )
                 conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                 conn.setRequestProperty("Accept", "application/json")
                 conn.instanceFollowRedirects = false
@@ -516,26 +506,27 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 // If we get a successful or unauthorized response, clear the auth state
                 // We're either no longer authorized, or something is wrong
                 if (responseCode == HttpURLConnection.HTTP_OK ||
-                    responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                    responseCode == HttpURLConnection.HTTP_UNAUTHORIZED
+                ) {
                     clearAuthState()
 
                     this.initializeAppAuth()
-                    // Set the login, logout buttons
+
+                    // Set the login, logout buttons appropriately
                     requireActivity().runOnUiThread {
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.logout_successful),
                             Toast.LENGTH_SHORT
-                        )
+                        ).show()
+
                         loginPreference?.isEnabled = true
                         logoutPreference?.isEnabled = false
                     }
-                }
-                else {
+                } else {
                     Log.w(TAG, "Problem with revoke attempt: ${responseCode}")
                 }
                 conn.disconnect()
-
 
             } catch (ioEx: IOException) {
                 Log.e(TAG, getString(R.string.access_revoke_io_error), ioEx)
@@ -561,10 +552,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
 
-
-
-
-
     /**
      * Display functions
      */
@@ -578,14 +565,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
         Log.i(TAG, "Loading: $loadingMessage")
     }
 
-    private fun displayAuthCancelled() {
-        Toast.makeText(requireContext(), R.string.auth_failed_snack, Toast.LENGTH_SHORT).show()
-    }
-
     @MainThread
     private fun displayNotAuthorized(explanation: String) {
         // TODO: Implement something useful
-        Toast.makeText(requireContext(), "Not authorized", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), explanation, Toast.LENGTH_SHORT).show()
         Log.i(TAG, "Not authorized: ${explanation}")
     }
 

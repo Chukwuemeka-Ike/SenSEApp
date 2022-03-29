@@ -9,7 +9,7 @@ buildscript {
         maven { url "https://jitpack.io" }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.0.4'
+        classpath 'com.android.tools.build:gradle:7.0.2'
         classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.10'
         classpath 'com.chaquo.python:gradle:10.0.1'
     }
@@ -28,6 +28,7 @@ project.ext {
     lifecycleVersion = '2.4.0'
     materialVersion = '1.4.0'
     roomVersion = '2.4.0-rc01'
+    workVersion = '2.7.1'
 
     // testing
     junitVersion = '4.13.2'

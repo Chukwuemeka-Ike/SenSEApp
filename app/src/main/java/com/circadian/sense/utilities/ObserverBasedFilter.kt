@@ -19,51 +19,44 @@ class ObserverBasedFilter {
     fun simulateDynamics(t: FloatArray, y: FloatArray, L: FloatArray): MutableList<FloatArray>? {
         Log.i(TAG, "Simulating system dynamics")
         return try {
-            val module = getPythonModule(pythonMainKey)
+            val module = getPythonModule(PYTHON_MAIN_KEY)
             // Call simulateDynamics function which returns a list of PyObjects arranged:
             // [x1, x2, x3, ..., yHat]
-            val stateDynamics = module.callAttr(simulateDynamicsKey, t, y, L).asList()
-            Log.i(TAG, "Output results: $stateDynamics")
+            val stateDynamics = module.callAttr(SIMULATE_DYNAMICS_KEY, t, y, L).asList()
 
             // Convert each row of the output to FloatArrays and add to filterOutput
             val filterOutput = mutableListOf<FloatArray>()
-            for (i in 0 until stateDynamics.size){
+            for (i in 0 until stateDynamics.size) {
                 filterOutput.add(stateDynamics[i].toJava(FloatArray::class.java))
             }
 
-            // TODO: Only here for debugging
-            val yHat = filterOutput.last()
-            Log.i(TAG, "Filter Output: ${yHat.asList().slice(0..4)}")
-
             filterOutput
-        }
-        catch(e: Exception){
-            Log.e(TAG, "${simulateDynamicsKey} failed: ${e}")
+        } catch (e: Exception) {
+            Log.e(TAG, "$SIMULATE_DYNAMICS_KEY failed: $e")
             null
         }
     }
 
     /**
-     * Calls the python function that optimizes the filter's gains and and
+     * Calls the python function that optimizes the filter's gains and
      * returns the optimalGains as a FloatArray
      * @param [t] - times array
      * @param [y] - raw data array
-     * @return [optimalGains] if successful or null otherwise
+     * @return optimalGains if successful or null otherwise
      */
     fun optimizeFilter(t: FloatArray, y: FloatArray): FloatArray? {
         Log.i(TAG, "Optimizing filter")
-        val module = getPythonModule(pythonMainKey)
+        val module = getPythonModule(PYTHON_MAIN_KEY)
         return try {
             // Call optimizeFilter function which returns a "list" of PyObjects arranged:
             // [[L1, L2, L3, ...]]
-            val optimalGains = module.callAttr(optimizeFilterKey, t, y).asList()
-            Log.i(TAG, "Optimal Gains: ${optimalGains}")
+            val optimalGains = module.callAttr(OPTIMIZE_FILTER_KEY, t, y).asList()
+            Log.i(TAG, "Optimal Gains: $optimalGains")
 
             // Convert optimalGains to a FloatArray and return
             optimalGains[0].toJava(FloatArray::class.java)
-        }
-        catch(e: Exception){
-            Log.e(TAG, "Exception: ${e}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception: $e")
             null
         }
     }
@@ -80,9 +73,9 @@ class ObserverBasedFilter {
 
     companion object {
         private const val TAG = "ObserverBasedFilter"
-        private const val simulateDynamicsKey = "simulateDynamics"
-        private const val optimizeFilterKey = "optimizeFilter"
-        private const val pythonMainKey = "main"
+        private const val SIMULATE_DYNAMICS_KEY = "simulateDynamics"
+        private const val OPTIMIZE_FILTER_KEY = "optimizeFilter"
+        private const val PYTHON_MAIN_KEY = "main"
     }
 
 }

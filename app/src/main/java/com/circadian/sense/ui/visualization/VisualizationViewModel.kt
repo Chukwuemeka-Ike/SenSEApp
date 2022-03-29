@@ -6,109 +6,114 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
-import com.circadian.sense.R
+import com.circadian.sense.*
 import com.circadian.sense.utilities.*
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import net.openid.appauth.AuthorizationService
+import java.time.LocalDate
+import java.time.ZoneId
+import java.util.concurrent.TimeUnit
 import kotlin.system.measureTimeMillis
 
 class VisualizationViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "VizViewModel"
-    private val mAuthStateManager: AuthStateManager
-    private val mConfiguration: Configuration
-    private val mAuthService: AuthorizationService
-    private val mOBF: ObserverBasedFilter
-    private val mDataManager: DataManager
-    private val mOrchestrator: Orchestrator
+    private val mDataManager: DataManager = DataManager(application.applicationContext)
 
     private val _chartDataset = MutableLiveData<ArrayList<ILineDataSet>>()
     val chartData: LiveData<ArrayList<ILineDataSet>> = _chartDataset
 
     init {
-        Log.i(TAG, "Creating VisualizationViewModel")
-        mAuthStateManager = AuthStateManager.getInstance(application.applicationContext)
-        mConfiguration = Configuration.getInstance(application.applicationContext)
-        mAuthService = AuthorizationService(application.applicationContext)
-        mOBF = ObserverBasedFilter()
-        mDataManager = DataManager(application.applicationContext)
-        mOrchestrator = Orchestrator(
-            mAuthStateManager,
-            mConfiguration,
-            mAuthService,
-            mDataManager,
-            mOBF
-        )
-    }
-
-    fun runWorkflow(){
-        viewModelScope.launch {
-            withContext(Dispatchers.IO){
-                val elapsed = measureTimeMillis {
-                    Log.i(TAG, "ViewModel thread: ${Thread.currentThread().name}")
-                    Log.i(TAG, "AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
-                    val data = mOrchestrator.getFreshData()
-                    Log.i(TAG, "It didn't all blow up!")
-                    if (data != null) {
-                            withContext(Dispatchers.Main){
-                                _chartDataset.value = createChartDataset(data.t, data.y, data.yHat)
-                            }
-                    }
-                }; Log.i(TAG, "Total time taken: $elapsed")
-            }
-        }
+        // Attempt to create the dataset immediately
+        createChartDataset()
     }
 
     /**
-     * Creates a the chart dataset given t, y, and yHat
+     * Creates a chart dataset from the currently available local data.
+     * Provided that the daily worker has already run, this data will be up to date.
+     * The only time there might be no data is if this is the first time running the app
+     *
+     * Updates the chartDataset LiveData which is subscribed to by Visualization UI components
+     */
+    fun createChartDataset() {
+        Log.i(TAG, "Creating chart dataset")
+
+        // Still timing to see how long this takes
+        val elapsed = measureTimeMillis {
+            val data = mDataManager.loadData()
+            if (data != null) {
+                _chartDataset.value = createChartDataset(data.y, data.yHat)
+            }
+        }; Log.i(TAG, "Total time taken creating chart data: $elapsed")
+    }
+
+    /**
+     * This function removes zeros from the raw y array. Zeros in y
+     * are because of data dropout and make the graph horrible to look at.
+     * We instead replace zeros with the last non-zero value (or 70 if they're at the beginning)
+     * @param [y]
+     * @return [zeroFreeY]
+     */
+    private fun eliminateZeros(y: FloatArray): FloatArray {
+        val zeroFreeY = FloatArray(y.size)
+        var holder = 70f
+        for (i in y.indices) {
+            if (y[i] != 0f) {
+                holder = y[i]
+            }
+            zeroFreeY[i] = holder
+        }
+        return zeroFreeY
+    }
+
+    /**
+     * Creates the chart dataset given t, y, and yHat
      * @param [t] - vector of times in hours from first time point
      * @param [y] - vector of raw biometric values
      * @param [yHat] - vector of filtered biometric values
      * @return [dataSets] - pair of ILineDataSets that can be plotted by MPAndroidChart
      */
     private fun createChartDataset(
-        t: FloatArray,
         y: FloatArray,
         yHat: FloatArray
     ): ArrayList<ILineDataSet> {
 
+        val zeroFreeY = eliminateZeros(y)
+
+        // Get NUM_DAYS ago in Epoch Minutes
+        val day1InMinutes = TimeUnit.SECONDS.toMinutes(
+            LocalDate.now()
+                .minusDays(NUM_DAYS.toLong())
+                .atStartOfDay(ZoneId.systemDefault())
+                .toEpochSecond()
+        )
+
+        // Create lists of entries for the raw and filtered data
         val rawDataEntries = mutableListOf<Entry>()
         val filterDataEntries = mutableListOf<Entry>()
-        for(entry in t.indices){
-            rawDataEntries.add(Entry(t[entry], y[entry]))
-            filterDataEntries.add(Entry(t[entry], yHat[entry]))
+
+        for (entry in y.indices) {
+            val x = (day1InMinutes + entry).toFloat()
+            rawDataEntries.add(Entry(x, zeroFreeY[entry]))
+            filterDataEntries.add(Entry(x, yHat[entry]))
         }
 
-        val rawDataset = LineDataSet(
-            rawDataEntries,
-            y_label
-        )
-        rawDataset.color = Color.MAGENTA
+        // Create the chart datasets from both lists
+        val rawDataset = LineDataSet(rawDataEntries, Y_LABEL)
+        rawDataset.color = Color.rgb(37, 137, 245)
         rawDataset.setDrawCircles(false)
+        rawDataset.lineWidth = 0.5f
 
-        val filterDataset = LineDataSet(
-            filterDataEntries,
-            yHat_label
-        )
-        filterDataset.color = Color.RED
+        val filterDataset = LineDataSet(filterDataEntries, YHAT_LABEL)
+        filterDataset.color = Color.rgb(207, 19, 19)
         filterDataset.setDrawCircles(false)
-//        filterDataset.setDrawFilled(true)
+        filterDataset.lineWidth = 3f
 
+        // Create a list of datasets which the chart in the Visualization UI components can plot
         val dataSets: ArrayList<ILineDataSet> = ArrayList()
         dataSets.add(0, rawDataset)
         dataSets.add(1, filterDataset)
 
         return dataSets
     }
-
-    companion object {
-        val y_label = "Heart Rate (BPM)"
-        val yHat_label = "Filtered Output"
-    }
-
 }
