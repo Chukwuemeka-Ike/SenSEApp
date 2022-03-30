@@ -18,7 +18,7 @@ import kotlin.system.measureTimeMillis
 
 class VisualizationViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "VizViewModel"
-    private val mDataManager: DataManager = DataManager(application.applicationContext)
+    private val mUserDataManager: UserDataManager = UserDataManager(application.applicationContext)
 
     private val _chartDataset = MutableLiveData<ArrayList<ILineDataSet>>()
     val chartData: LiveData<ArrayList<ILineDataSet>> = _chartDataset
@@ -40,7 +40,7 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
 
         // Still timing to see how long this takes
         val elapsed = measureTimeMillis {
-            val data = mDataManager.loadData()
+            val data = mUserDataManager.loadUserData()
             if (data != null) {
                 _chartDataset.value = createChartDataset(data.y, data.yHat)
             }

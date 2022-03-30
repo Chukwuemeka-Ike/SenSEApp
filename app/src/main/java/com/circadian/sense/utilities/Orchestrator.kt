@@ -15,8 +15,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * Orchestrates the entire OBF, AuthStateManager, DataManager process to
- * deliver fresh input and output data whenever requested
+ * Orchestrates getting fresh data by combining the OBF, AuthStateManager, and UserDataManager
  */
 class Orchestrator(
     mContext: Context
@@ -28,40 +27,42 @@ class Orchestrator(
     private val mConfiguration: Configuration = Configuration.getInstance(mContext)
     private val mAuthService: AuthorizationService = AuthorizationService(mContext)
     private val mOBF: ObserverBasedFilter = ObserverBasedFilter()
-    private val mDataManager: DataManager = DataManager(mContext)
+    private val mUserDataManager: UserDataManager = UserDataManager(mContext)
 
     /**
      * Returns saved data if it is current, or requests data, runs the filter and
      * returns the new data
-     * @return DataPack(t, y, yHat)
+     * @return DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
      */
     suspend fun getFreshData(): DataPack? {
         if (!mAuthStateManager.current.isAuthorized) {
+            Log.d(TAG, "App not authorized! Should not be requesting data")
             return null
         }
 
-        // Date strings to allow us check whether stuff is up to date
+        // Date strings to allow us check whether data is up to date
         val formatter = DateTimeFormatter.ofPattern(DATE_PATTERN)
         val today = LocalDateTime.now()
         val todayString = today.format(formatter)
         val yesterdayString = today.minusDays(1).format(formatter)
         val weekAgoString = today.minusDays(7).format(formatter)
 
-        // Load previously saved data
-        val filterData = mDataManager.loadData()
+        // Attempt to load previously saved user data
+        val filterData = mUserDataManager.loadUserData()
         var newData: List<FloatArray>?
 
         // If we have no data at all, request and save new data
         if (filterData == null) {
             Log.i(TAG, "No saved data, requesting new data")
-
             newData = performActionWithFreshTokensSuspend()
 
 //            Log.i(TAG, "Received t: ${newData!![0].asList()}")
 //            Log.i(TAG, "Received y: ${newData!![1].asList()}")
 
+            // Optimize the filter on the new data, then simulate dynamics with the optimal filter
             val L = mOBF.optimizeFilter(newData!![0], newData!![1])
             val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!.last()
+
             return finishUp(newData!![0], newData!![1], yHat, yesterdayString, L!!, todayString)
         }
         // If the data is not up to date, request new data
@@ -151,12 +152,12 @@ class Orchestrator(
             mAuthStateManager.current.performActionWithFreshTokens(
                 mAuthService
             ) { accessToken, idToken, ex ->
-                Log.i(TAG, "${accessToken}, ${idToken}, $ex")
+//                Log.i(TAG, "${accessToken}, ${idToken}, $ex")
                 mAuthStateManager.replace(mAuthStateManager.current) // Update the state
                 val userId = getUserID()
                 CoroutineScope(it.context).launch(Dispatchers.IO) {
                     it.resume(
-                        mDataManager.fetchMultiDayData(
+                        mUserDataManager.fetchMultiDayUserData(
                             NUM_DAYS,
                             userId!!,
                             accessToken!!,
@@ -191,7 +192,7 @@ class Orchestrator(
             val data = DataPack(t, y, yHat, dataTimestamp, L, gainsTimestamp)
             withContext(Dispatchers.IO) {
                 // Save the data to file
-                mDataManager.writeData(data)
+                mUserDataManager.writeUserData(data)
             }
             data
         } catch (e: Exception) {

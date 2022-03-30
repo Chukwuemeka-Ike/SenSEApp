@@ -3,23 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="wrap_content"
     android:tag="VisualizationFragment"
     tools:context=".ui.visualization.VisualizationFragment">
-
-<!--    <androidx.appcompat.widget.Toolbar-->
-<!--        android:id="@+id/vizAppBar"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="?attr/actionBarSize"-->
-<!--        android:background="@color/purple_700"-->
-<!--        android:elevation="4dp"-->
-<!--        android:theme="@style/Theme.SenSE"-->
-<!--        app:layout_constraintEnd_toEndOf="parent"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintTop_toTopOf="parent"-->
-<!--        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"-->
-<!--        app:title="Data Visualization"-->
-<!--        app:titleTextColor="@color/white" />-->
 
     <ScrollView
         android:layout_width="match_parent"
@@ -33,6 +19,7 @@
             android:id="@+id/authorized_viz"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
@@ -55,7 +42,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/small_padding"
                     android:layout_marginEnd="@dimen/small_padding"
-                    android:fontFamily="@string/basic_font"
                     android:text="@string/raw_data_checkbox" />
 
                 <CheckBox
@@ -64,7 +50,6 @@
                     android:layout_height="match_parent"
                     android:layout_marginStart="@dimen/small_padding"
                     android:layout_marginEnd="@dimen/small_padding"
-                    android:fontFamily="@string/basic_font"
                     android:text="@string/filtered_data_checkbox" />
             </RadioGroup>
 
@@ -83,7 +68,6 @@
                 android:id="@+id/visualizationChart"
                 android:layout_width="match_parent"
                 android:layout_height="339dp"
-                android:layout_gravity="center_horizontal"
                 android:layout_marginTop="@dimen/small_padding"
                 android:layout_marginStart="@dimen/small_padding"
                 android:layout_marginEnd="@dimen/small_padding"
@@ -94,7 +78,6 @@
             <LinearLayout
                 android:id="@+id/loading_container"
                 android:orientation="vertical"
-                android:layout_gravity="center_horizontal"
                 android:gravity="center"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -109,7 +92,6 @@
                     android:id="@+id/loading_description"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@string/basic_font"
                     android:layout_marginBottom="@dimen/big_padding"
                     android:gravity="center"
                     android:text="Optimizing filter"/>
@@ -118,8 +100,7 @@
                     android:id="@+id/progressBar"
                     android:layout_width="100dp"
                     android:layout_height="100dp"
-                    android:layout_marginBottom="@dimen/big_padding"
-                    android:layout_gravity="center_horizontal"/>
+                    android:layout_marginBottom="@dimen/big_padding"/>
             </LinearLayout>
 
 <!--            <Button-->
@@ -145,14 +126,28 @@
                 android:layout_marginTop="@dimen/big_padding"
                 android:layout_marginBottom="@dimen/big_padding"
                 android:text="@string/visualization_exposition"
-                android:fontFamily="@string/basic_font"
-                android:gravity="left"
-                android:textSize="@dimen/normal_font_size"
+                android:gravity="center"
                 app:layout_constraintHorizontal_bias="0.0"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/visualizationChart"
                 app:layout_constraintBottom_toBottomOf="parent"/>
+
+<!--            <Button-->
+<!--                android:id="@+id/viz_exposition_button"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="@dimen/card_button_height"-->
+<!--                android:layout_marginStart="@dimen/small_padding"-->
+<!--                android:layout_marginTop="@dimen/small_padding"-->
+<!--                android:layout_marginEnd="@dimen/small_padding"-->
+<!--                android:layout_marginBottom="@dimen/big_padding"-->
+<!--                android:fontFamily="@string/basic_font"-->
+<!--                android:text="@string/viz_exposition_button_label"-->
+<!--                android:textSize="@dimen/normal_font_size"-->
+<!--                app:layout_constraintStart_toStartOf="parent"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintTop_toBottomOf="@+id/visualizationChart"-->
+<!--                app:layout_constraintBottom_toBottomOf="parent" />-->
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
@@ -161,21 +156,21 @@
         android:id="@+id/not_authorized_viz"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginTop="@dimen/big_padding"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/small_padding"
-            android:layout_marginTop="@dimen/massive_padding"
             android:layout_marginEnd="@dimen/small_padding"
             android:text="@string/not_authorized_viz_text"
             android:textAlignment="center"
             android:textSize="@dimen/normal_font_size"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 

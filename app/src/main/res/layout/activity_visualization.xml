@@ -24,7 +24,6 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/small_padding"
             android:layout_marginEnd="@dimen/small_padding"
-            android:fontFamily="@string/basic_font"
             android:text="@string/raw_data_checkbox" />
 
         <CheckBox
@@ -33,7 +32,6 @@
             android:layout_height="match_parent"
             android:layout_marginStart="@dimen/small_padding"
             android:layout_marginEnd="@dimen/small_padding"
-            android:fontFamily="@string/basic_font"
             android:text="@string/filtered_data_checkbox" />
     </RadioGroup>
 

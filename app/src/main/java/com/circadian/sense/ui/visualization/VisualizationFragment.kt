@@ -4,17 +4,23 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
 import android.widget.CheckBox
+import android.widget.PopupWindow
+import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.circadian.sense.R
 import com.circadian.sense.DAILY_OPTIMIZATION_WORKER_TAG
+import com.circadian.sense.R
 import com.circadian.sense.databinding.FragmentVisualizationBinding
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
@@ -111,6 +117,7 @@ class VisualizationFragment : Fragment() {
             )
         }
 
+//        binding.vizExpositionButton.setOnClickListener { showPopupWindow(it, container) }
 
         // Listen for WorkManager. If it's succeeded and mVizChart hasn't been populated, createChartDataset
         WorkManager.getInstance(requireContext()).getWorkInfosByTagLiveData(DAILY_OPTIMIZATION_WORKER_TAG)
@@ -152,6 +159,27 @@ class VisualizationFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun showPopupWindow(v: View, container: ViewGroup?) {
+        val popupWindow = PopupWindow()
+
+//        when (v.id){
+//            R.id.viz_exposition_button -> {
+//                popupWindow.contentView = layoutInflater.inflate(R.layout.popup_visualization_exposition, container, false)
+//            }
+//        }
+
+        popupWindow.width = ConstraintLayout.LayoutParams.MATCH_PARENT
+        popupWindow.height = ConstraintLayout.LayoutParams.WRAP_CONTENT
+        popupWindow.isFocusable = true
+        popupWindow.isTouchable = true
+        popupWindow.isOutsideTouchable = true
+//            popupWindow.enterTransition
+        popupWindow.animationStyle = Animation.INFINITE
+//        popupWindow.setBackgroundDrawable()
+        popupWindow.showAtLocation(v.rootView, Gravity.CENTER, 0, 0)
+//        popupWindow.showAsDropDown(v.rootView, 0, 0, Gravity.CENTER_VERTICAL)
     }
 
     /**
@@ -196,7 +224,7 @@ class VisualizationFragment : Fragment() {
         xAxis.isEnabled = true
         xAxis.typeface = tf
         xAxis.setLabelCount(3, false)
-        xAxis.granularity = 1440 / 24f
+        xAxis.granularity = 1440 / 48f
         xAxis.setCenterAxisLabels(false)
 
         // Convert the x-axis millis values to string timestamps

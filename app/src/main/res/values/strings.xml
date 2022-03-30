@@ -2,7 +2,7 @@
     <string name="app_name">SenSE</string>
 
     <!--    Home Fragment -->
-    <string name="title_home">SenSE</string>
+    <string name="nav_bar_home_title">Home</string>
     <string name="home_greeting">Welcome to SenSE - a joint project by the Julius and Rensselaer High Frequency Integrated Circuits
         (RHFIC) Labs at Rensselaer Polytechnic Institute.\n\n\n
         We are working toward an optimized life experience.\n\n\n
@@ -12,32 +12,45 @@
     </string>
     <string name="circadian_health">The circadian rhythm plays a vital role in our overall well-being. From our sleep patterns and alertness,
         to our body temperature and metabolism, our circadian rhythm can have huge effects on how we feel.\n\n
-        As you can imagine,
+        Because of this, it\'s important that we can measure the rhythm and identify when issues arise. The
+        SenSE app implements a filtering algorithm that tries to do this using your heart rate data.
     </string>
     <string name="who_we_are">SenSE is an ongoing project with contributors from the Julius and Rensselaer High Frequency Integrated Circuits
         (RHFIC) Labs at Rensselaer Polytechnic Institute.\n\n
         We\'re a group of researchers focused on improving our understanding of circadian dynamics with the hope of doing some good with that
         knowledge.
     </string>
-    <string name="data_use">The app requests your HR data from Fitbit and processes it on your phone. Everything is kept encrypted on your
+    <string name="data_use">The app requests your heart rate data from Fitbit and processes it on your phone. Everything is kept encrypted on your
         phone, and we never have access to your data.
     </string>
     <string name="circadian_health_button_label">Why is your circadian health important?</string>
     <string name="who_we_are_button_label">Who we are</string>
     <string name="data_use_button_label">How we\'ll use your data</string>
+    <string name="rensselaer_polytechnic_institute_logo_content_description">Rensselaer Polytechnic Institute logo</string>
 
     <!--    Visualization Fragment -->
     <string name="title_visualization">Visualization</string>
     <string name="visualization_exposition">
-        The graph above shows your raw heart rate from Fitbit overlayed with the filtered output which we take to be your circadian rhythm.\n\n\n
-        We get this output by isolating 3 harmonics from the heart rate, which allow us estimate how your rhythm progresses over the day.\n\n\n
-        The algorithm is based on an Observer-Based-Filter that was developed by our lab.</string>
+        The graph above shows your raw heart rate from Fitbit overlayed with the filtered output which we take to be your circadian rhythm.\n\n
+        We get this output by isolating harmonics from the heart rate, which allow us estimate how your rhythm progresses over the day.\n\n
+        The algorithm is based on the Observer-Based Filter that was developed by the Julius Lab. By combining linear control theory with gradient-free
+        optimization, we\'re able to tune the filter to fit your data.\n\n
+        We hope that as our research progresses, we will be able to combine these measurements with control algorithms that can help optimize your
+        circadian dynamics - getting light at the right times, sleeping at the right times, etc.
+    </string>
     <string name="filtered_data_checkbox">Filtered Data</string>
     <string name="raw_data_checkbox">Raw Data</string>
-    <string name="not_authorized_viz_text">The app has not been authorized yet, so we cannot visualize your data. \n\nPlease navigate to settings to log in to Fitbit</string>
+    <string name="not_authorized_viz_text">The app has not been authorized yet, so we cannot visualize your data.
+        Please navigate to settings to log in to Fitbit.\n\n
+        Once you\'re logged in, the app will request your heart rate data from Fitbit and run it through the Observer-Based Filtering algorithm
+        developed by the Julius Lab.
+    </string>
     <string name="optimize_button_label">Optimize Filter</string>
     <string name="y_label">Heart Rate (BPM)</string>
     <string name="yHat_label">Filtered Output </string>
+    <string name="maximize_button_name">Fullscreen Button</string>
+    <string name="minimize_fullscreen_description">Minimize fullscreen</string>
+    <string name="viz_exposition_button_label">What the graph means</string>
 
     <!--    Settings Fragment -->
     <string name="title_settings">Settings</string>
@@ -52,6 +65,11 @@
     <string name="logout_dialog_positive">Yes</string>
     <string name="logout_dialog_negative">No</string>
     <string name="logout_successful">Logged out successfully</string>
+    <string name="feedback_pref_tag">feedback</string>
+    <string name="notifications_pref_tag">notifications</string>
+    <string name="no_auth_state_retained_exception">No authorization state retained - reauthorization required</string>
+    <string name="cancelled_logout_dialog">Logout cancelled</string>
+    <string name="initiated_logout_dialog">Logout initiated</string>
 
     <!--    Authorization Workflow -->
     <string name="auth_failed_snack">Authorization failed. Please retry</string>
@@ -66,13 +84,6 @@
 
     <!--    Misc -->
     <string name="basic_font">sans-serif</string>
-    <string name="maximize_button_name">Fullscreen Button</string>
-    <string name="minimize_fullscreen_description">Minimize fullscreen</string>
-    <string name="rensselaer_polytechnic_institute_logo_content_description">Rensselaer Polytechnic Institute logo</string>
-    <string name="feedback_pref_tag">feedback</string>
-    <string name="no_auth_state_retained_exception">No authorization state retained - reauthorization required</string>
-    <string name="cancelled_logout_dialog">Logout cancelled</string>
-    <string name="initiated_logout_dialog">Logout initiated</string>
     <string name="cancel_optimization_button">Cancel optimization</string>
     <string name="optimization_ongoing_notification">We\'re optimizing the filter on your data. This can take up to 15 minutes, so we\'ll notify you once it\'s done.</string>
     <string name="optimization_succeeded_notification">Successfully updated the filter with new data</string>
