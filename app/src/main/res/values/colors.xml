@@ -8,4 +8,7 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="blur">#dedede</color>
+    <color name="light_red">#FF4E4E</color>
+    <color name="dark_red">#C32828</color>
+    <color name="deep_red">#8E0000</color>
 </resources>

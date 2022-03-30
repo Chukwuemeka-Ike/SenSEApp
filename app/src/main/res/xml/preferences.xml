@@ -1,36 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <PreferenceCategory
         app:key="account_category"
         app:title="Account"
-        app:icon="@drawable/fitbit_emblem"
-        >
-
+        app:icon="@drawable/fitbit_emblem">
         <Preference
             app:key="@string/login_pref_tag"
             app:title="@string/login_button_label"
-            app:summary="@string/login_description"
-            />
+            app:summary="@string/login_description" />
         <Preference
             app:key="@string/logout_pref_tag"
             app:title="@string/logout_button_label"
-            app:summary="@string/logout_description"
-            />
+            app:summary="@string/logout_description" />
     </PreferenceCategory>
-
 
     <PreferenceCategory
         app:key="misc_category"
         app:title="Miscellaneous">
-    <SwitchPreferenceCompat
-        app:key="notifications"
-        app:title="Enable app notifications"/>
-
-    <Preference
-        app:key="feedback"
-        app:title="Send feedback"
-        app:summary="Report technical issues or suggest new features"/>
+        <SwitchPreferenceCompat
+            app:key="@string/notifications_pref_tag"
+            android:iconSpaceReserved="true"
+            app:title="Enable app notifications"/>
+        <Preference
+            app:key="@string/feedback_pref_tag"
+            app:title="Send feedback"
+            app:summary="Report technical issues or suggest new features"/>
     </PreferenceCategory>
 </PreferenceScreen>

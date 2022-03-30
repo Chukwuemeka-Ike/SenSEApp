@@ -21,7 +21,7 @@ class ObserverBasedFilter:
     __omg = 2*pi/24
     __zeta = 1
     __gamma_d = 1
-    __order = 1
+    __order = 3
     __stateLength = (2 * __order + 1)
     
     # Optimization hyperparameters

@@ -1,40 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_gravity="center"
-    android:layout_marginStart="@dimen/small_padding"
-    android:layout_marginEnd="@dimen/small_padding"
+    android:theme="@style/PopupTheme"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-        <ImageView
-            android:id="@+id/rpi_logo"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="@dimen/big_padding"
-            android:contentDescription="@string/rensselaer_polytechnic_institute_logo_content_description"
-            android:src="@drawable/rpi_logo_2"
-            android:layout_marginBottom="@dimen/reg_padding"
-            app:layout_constraintBottom_toTopOf="@+id/who_we_are_text_view"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/who_we_are_text_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/small_padding"
-            android:layout_marginTop="@dimen/small_padding"
-            android:layout_marginEnd="@dimen/small_padding"
-            android:layout_marginBottom="@dimen/small_padding"
-            android:fontFamily="@string/basic_font"
-            android:gravity="center"
-            android:lineSpacingExtra="10dp"
-            android:text="@string/who_we_are"
-            android:textSize="@dimen/normal_font_size"
-            android:textStyle="normal"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:id="@+id/popup_scroll_view"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+                <ImageView
+                    android:id="@+id/rpi_logo"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/reg_padding"
+                    android:contentDescription="@string/rensselaer_polytechnic_institute_logo_content_description"
+                    android:src="@drawable/rpi_logo_2"
+                    android:layout_marginTop="@dimen/big_padding"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/who_we_are_text_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/who_we_are"
+                    android:layout_marginTop="@dimen/big_padding"
+                    android:layout_marginBottom="@dimen/reg_padding"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/rpi_logo"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+        </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>

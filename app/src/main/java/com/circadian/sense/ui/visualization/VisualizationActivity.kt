@@ -110,7 +110,7 @@ class VisualizationActivity : AppCompatActivity() {
         xAxis.isEnabled = true
         xAxis.typeface = tf
         xAxis.setLabelCount(5, false)
-        xAxis.granularity = 1440 / 24f
+        xAxis.granularity = 1440 / 48f
         xAxis.setCenterAxisLabels(false)
 
         // Convert the x-axis millis values to string timestamps
