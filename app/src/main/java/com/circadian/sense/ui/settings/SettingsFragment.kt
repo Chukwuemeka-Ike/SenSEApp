@@ -27,15 +27,19 @@ import com.circadian.sense.R
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
 import com.circadian.sense.utilities.DailyOptimizationWorker
-import com.circadian.sense.utilities.DataManager
+import com.circadian.sense.utilities.UserDataManager
+import kotlinx.coroutines.*
 import net.openid.appauth.*
 import org.json.JSONException
 import java.io.IOException
+import java.lang.Runnable
 import java.net.HttpURLConnection
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class SettingsFragment : PreferenceFragmentCompat() {
     private val TAG = "SettingsFragment"
@@ -91,7 +95,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
 
         // AuthStateManager, Executor, Configuration, AuthService
         mAuthStateManager = AuthStateManager.getInstance(requireContext().applicationContext)
@@ -128,6 +132,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         val feedBack: Preference? = findPreference(getString(R.string.feedback_pref_tag))
         feedBack?.isEnabled = false
+        val notifications: Preference? = findPreference(getString(R.string.notifications_pref_tag))
+        notifications?.isEnabled = false
 
         // Start warming up the browser and auth process if not authorized
         if (!mAuthStateManager.current.isAuthorized) {
@@ -305,21 +311,20 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    /**
-     *
-     */
-    @MainThread
-    private fun refreshAccessToken() {
-        displayLoading("Refreshing access token")
-        performTokenRequest(
-            mAuthStateManager.current.createTokenRefreshRequest()
-        ) { tokenResponse: TokenResponse?, authException: AuthorizationException? ->
-            handleAccessTokenResponse(
-                tokenResponse,
-                authException
-            )
+    private suspend fun refreshAccessTokenSuspend(): Boolean =
+        suspendCoroutine {
+            displayLoading("Refreshing access token")
+            performTokenRequest(
+                mAuthStateManager.current.createTokenRefreshRequest()
+            ) { tokenResponse: TokenResponse?, authException: AuthorizationException? ->
+                it.resume(
+                    handleAccessTokenResponse(
+                        tokenResponse,
+                        authException
+                    )
+                )
+            }
         }
-    }
 
     /**
      *
@@ -372,9 +377,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private fun handleAccessTokenResponse(
         tokenResponse: TokenResponse?,
         authException: AuthorizationException?
-    ) {
+    ): Boolean {
         mAuthStateManager.updateAfterTokenResponse(tokenResponse, authException)
         requireActivity().runOnUiThread { displayAuthorized() }
+        return true
     }
 
     /**
@@ -464,22 +470,29 @@ class SettingsFragment : PreferenceFragmentCompat() {
         //        Content-Type: application/x-www-form-urlencoded
         //        token=<access_token or refresh_token to be revoked>
 
-        // Offload all this to a separate thread
-        mExecutor.submit {
+        val job = Job()
+        val uiScope = CoroutineScope(Dispatchers.Main + job)
+        uiScope.launch(Dispatchers.IO) {
+
             val revokeTokenEndpoint = Uri.parse(
                 mConfiguration.getRevokeTokenEndpointUri().toString()
             )
 
             // Refresh access token first to ensure no issues with revoking
-            // TODO: Make this synchronous
             if (mAuthStateManager.current.needsTokenRefresh) {
-                refreshAccessToken()
+                Log.i(TAG, "Token needs refresh first")
+//                Log.i(TAG, "AuthState: ${mAuthStateManager.current.jsonSerializeString()}")
+                refreshAccessTokenSuspend()
             }
 
             // Clear user data, remove any existing WorkRequests, and clear MainActivity's ViewModelStore
-            DataManager(requireContext().applicationContext).clearData()
+            // to clear VizViewModel data
+            UserDataManager(requireContext().applicationContext).clearUserData()
             WorkManager.getInstance(requireContext().applicationContext).cancelAllWork()
-            requireActivity().runOnUiThread { requireActivity().viewModelStore.clear() }
+            withContext(Dispatchers.Main) {
+                requireActivity().viewModelStore.clear()
+                Log.i(TAG, "Cleared viewModel")
+            }
 
             // Send revoke request to Fitbit servers
             try {
@@ -509,11 +522,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     responseCode == HttpURLConnection.HTTP_UNAUTHORIZED
                 ) {
                     clearAuthState()
-
-                    this.initializeAppAuth()
+                    initializeAppAuth()
 
                     // Set the login, logout buttons appropriately
-                    requireActivity().runOnUiThread {
+                    withContext(Dispatchers.Main) {
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.logout_successful),
@@ -530,12 +542,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
             } catch (ioEx: IOException) {
                 Log.e(TAG, getString(R.string.access_revoke_io_error), ioEx)
-                return@submit
+                return@launch
             } catch (jsonEx: JSONException) {
                 Log.e(TAG, getString(R.string.access_revoke_json_error), jsonEx)
-                return@submit
+                return@launch
             }
         }
+
     }
 
     /**
@@ -567,14 +580,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     @MainThread
     private fun displayNotAuthorized(explanation: String) {
-        // TODO: Implement something useful
         Toast.makeText(requireContext(), explanation, Toast.LENGTH_SHORT).show()
         Log.i(TAG, "Not authorized: ${explanation}")
     }
 
     @MainThread
     private fun displayAuthorized() {
-        // TODO: Implement something useful
         Toast.makeText(requireContext(), "Authorization successful", Toast.LENGTH_SHORT).show()
         Log.i(TAG, "Authorization successful")
     }
