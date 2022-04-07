@@ -31,8 +31,10 @@
     <!--    Visualization Fragment -->
     <string name="title_visualization">Visualization</string>
     <string name="visualization_exposition">
-        The graph above shows your raw heart rate from Fitbit overlayed with the filtered output which we take to be your circadian rhythm.\n\n
+        The top graph shows your raw heart rate from Fitbit overlayed with the filtered output which we take to be your circadian rhythm.
         We get this output by isolating harmonics from the heart rate, which allow us estimate how your rhythm progresses over the day.\n\n
+        The second graph shows the daily estimate of your circadian phase relative to 8 days ago, which we get from the estimated rhythm
+        in the first graph.\n\n
         The algorithm is based on the Observer-Based Filter that was developed by the Julius Lab. By combining linear control theory with gradient-free
         optimization, we\'re able to tune the filter to fit your data.\n\n
         We hope that as our research progresses, we will be able to combine these measurements with control algorithms that can help optimize your
@@ -48,7 +50,7 @@
     <string name="optimize_button_label">Optimize Filter</string>
     <string name="y_label">Heart Rate (BPM)</string>
     <string name="yHat_label">Filtered Output </string>
-    <string name="maximize_button_name">Fullscreen Button</string>
+    <string name="maximize_button_name">Fullscreen</string>
     <string name="minimize_fullscreen_description">Minimize fullscreen</string>
     <string name="viz_exposition_button_label">What the graph means</string>
 
@@ -85,9 +87,13 @@
     <!--    Misc -->
     <string name="basic_font">sans-serif</string>
     <string name="cancel_optimization_button">Cancel optimization</string>
+    <string name="optimization_notification_title">Updating the filter with fresh data</string>
     <string name="optimization_ongoing_notification">We\'re optimizing the filter on your data. This can take up to 15 minutes, so we\'ll notify you once it\'s done.</string>
     <string name="optimization_succeeded_notification">Successfully updated the filter with new data</string>
     <string name="optimization_failed_notification">The filter update failed</string>
-    <string name="optimization_notification_title">Updating the filter with fresh data</string>
+    <string name="updating_filter_data">Updating filter data</string>
+    <string name="optimization_successful_notification_title">Optimization successful</string>
+    <string name="optimization_failed_notification_title">Filter update failed</string>
+    <string name="initial_optimization_input_data">Initial optimization</string>
 
 </resources>

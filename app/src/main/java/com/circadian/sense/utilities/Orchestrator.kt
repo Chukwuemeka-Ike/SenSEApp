@@ -61,9 +61,21 @@ class Orchestrator(
 
             // Optimize the filter on the new data, then simulate dynamics with the optimal filter
             val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-            val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!.last()
+            val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+            val yHat = filterOutput.last()
+            val xHat1 = filterOutput[0]
+            val xHat2 = filterOutput[1]
 
-            return finishUp(newData!![0], newData!![1], yHat, yesterdayString, L!!, todayString)
+            return finishUp(
+                newData!![0],
+                newData!![1],
+                yHat,
+                xHat1,
+                xHat2,
+                yesterdayString,
+                L!!,
+                todayString
+            )
         }
         // If the data is not up to date, request new data
         else if (filterData.dataTimestamp < yesterdayString) {
@@ -76,12 +88,17 @@ class Orchestrator(
             // If gains are fresh, finishUp
             if (filterData.gainsTimestamp > weekAgoString) {
                 Log.i(TAG, "Fresh gains, finishing up")
-                val yHat =
-                    mOBF.simulateDynamics(newData!![0], newData!![1], filterData.gains)!!.last()
+                val filterOutput =
+                    mOBF.simulateDynamics(newData!![0], newData!![1], filterData.gains)!!
+                val yHat = filterOutput.last()
+                val xHat1 = filterOutput[0]
+                val xHat2 = filterOutput[1]
                 return finishUp(
                     newData!![0],
                     newData!![1],
                     yHat,
+                    xHat1,
+                    xHat2,
                     yesterdayString,
                     filterData.gains,
                     filterData.gainsTimestamp
@@ -89,8 +106,20 @@ class Orchestrator(
             } else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
                 val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-                val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!.last()
-                return finishUp(newData!![0], newData!![1], yHat, yesterdayString, L!!, todayString)
+                val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+                val yHat = filterOutput.last()
+                val xHat1 = filterOutput[0]
+                val xHat2 = filterOutput[1]
+                return finishUp(
+                    newData!![0],
+                    newData!![1],
+                    yHat,
+                    xHat1,
+                    xHat2,
+                    yesterdayString,
+                    L!!,
+                    todayString
+                )
             }
         } else {
             Log.i(TAG, "Fresh saved data.")
@@ -104,6 +133,8 @@ class Orchestrator(
                     filterData.t,
                     filterData.y,
                     filterData.yHat,
+                    filterData.xHat1,
+                    filterData.xHat2,
                     filterData.dataTimestamp,
                     filterData.gains,
                     filterData.gainsTimestamp
@@ -111,11 +142,16 @@ class Orchestrator(
             } else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
                 val L = mOBF.optimizeFilter(filterData.t, filterData.y)
-                val yHat = mOBF.simulateDynamics(filterData.t, filterData.y, L!!)!!.last()
+                val filterOutput = mOBF.simulateDynamics(filterData.t, filterData.y, L!!)!!
+                val yHat = filterOutput.last()
+                val xHat1 = filterOutput[0]
+                val xHat2 = filterOutput[1]
                 return finishUp(
                     filterData.t,
                     filterData.y,
                     yHat,
+                    xHat1,
+                    xHat2,
                     filterData.dataTimestamp,
                     L!!,
                     todayString
@@ -183,13 +219,15 @@ class Orchestrator(
         t: FloatArray,
         y: FloatArray,
         yHat: FloatArray,
+        xHat1: FloatArray,
+        xHat2: FloatArray,
         dataTimestamp: String,
         L: FloatArray,
         gainsTimestamp: String
     ): DataPack? {
         return try {
             //
-            val data = DataPack(t, y, yHat, dataTimestamp, L, gainsTimestamp)
+            val data = DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, L, gainsTimestamp)
             withContext(Dispatchers.IO) {
                 // Save the data to file
                 mUserDataManager.writeUserData(data)

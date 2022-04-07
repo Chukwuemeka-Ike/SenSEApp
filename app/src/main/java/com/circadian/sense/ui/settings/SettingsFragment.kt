@@ -22,6 +22,7 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.circadian.sense.*
 import com.circadian.sense.R
 import com.circadian.sense.utilities.AuthStateManager
@@ -416,11 +417,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
             OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
                 .setConstraints(WORK_MANAGER_CONSTRAINTS)
                 .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
+                .setInputData(workDataOf(Pair(getString(R.string.initial_optimization_input_data), "true")))
                 .build()
         WorkManager.getInstance(requireContext().applicationContext)
-            .enqueueUniqueWork(
-                DAILY_OPTIMIZATION_WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+            .enqueue(
                 dailyOptimizationWorkRequest
             )
     }

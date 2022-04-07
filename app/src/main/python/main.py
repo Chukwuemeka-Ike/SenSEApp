@@ -79,6 +79,16 @@ def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     # np.array(t),np.array(y)
     return ObserverBasedFilter().optimizeFilter(t,y)
 
+def estimateAverageDailyPhase(xHat1In: np.ndarray, xHat2In: np.ndarray, numDays: int, numDataPointsPerDay: int) -> np.ndarray:
+    '''
+    
+    '''
+    xHat1 = np.array(xHat1In).reshape([1, numDays*numDataPointsPerDay])
+    xHat2 = np.array(xHat2In).reshape([1, numDays*numDataPointsPerDay])
+    averageDailyPhase = ObserverBasedFilter().estimateAverageDailyPhase(xHat1, xHat2, numDays, numDataPointsPerDay)
+    idx = np.argsort(averageDailyPhase)
+    return np.append(averageDailyPhase, idx, axis=0)
+
 def parseUserData(inputData: str) -> np.ndarray:
     '''
         Parses the input JSON string and return time and value arrays

@@ -3,6 +3,8 @@ package com.circadian.sense.utilities
 import android.util.Log
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
+import com.circadian.sense.NUM_DATA_POINTS_PER_DAY
+import com.circadian.sense.NUM_DAYS
 
 /**
  * ObserverBasedFilter class to organize the filter's two main functionalities
@@ -62,6 +64,38 @@ class ObserverBasedFilter {
     }
 
     /**
+     * Calls the python function that estimates the average daily phase over the NUM_DAYS
+     * @param [xHat1] - first filter state
+     * @param [xHat2] - second filter state
+     * @return [averageDailyPhase] if successful or null otherwise
+     */
+    fun estimateAverageDailyPhase(xHat1: FloatArray, xHat2: FloatArray): MutableList<FloatArray>? {
+        Log.i(TAG, "Estimating average daily phase")
+        val module = getPythonModule(PYTHON_MAIN_KEY)
+        return try {
+            // Call optimizeFilter function which returns a "list" of PyObjects arranged:
+            // [[phase1, phase2, phase3, ...],
+            // [sorted indices]]
+            val averageDailyPhase = module.callAttr(ESTIMATE_AVG_DAILY_PHASE_KEY, xHat1, xHat2, NUM_DAYS, NUM_DATA_POINTS_PER_DAY).asList()
+            Log.i(TAG, "Average daily phase: ${averageDailyPhase[0]}")
+            Log.i(TAG, "Sort indices: ${averageDailyPhase[1]}")
+
+            // Convert each row of the output to FloatArrays and add to filterOutput
+            val sortOutput = mutableListOf<FloatArray>()
+            for (i in 0 until averageDailyPhase.size) {
+                sortOutput.add(averageDailyPhase[i].toJava(FloatArray::class.java))
+            }
+
+            // Convert optimalGains to a FloatArray and return
+//            averageDailyPhase[0].toJava(FloatArray::class.java)
+            sortOutput
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception: $e")
+            null
+        }
+    }
+
+    /**
      * Gets the Python module specified by the moduleKey
      * @param [moduleKey] - should be set to the Python filename where
      *                      the target function is defined
@@ -75,6 +109,7 @@ class ObserverBasedFilter {
         private const val TAG = "ObserverBasedFilter"
         private const val SIMULATE_DYNAMICS_KEY = "simulateDynamics"
         private const val OPTIMIZE_FILTER_KEY = "optimizeFilter"
+        private const val ESTIMATE_AVG_DAILY_PHASE_KEY = "estimateAverageDailyPhase"
         private const val PYTHON_MAIN_KEY = "main"
     }
 

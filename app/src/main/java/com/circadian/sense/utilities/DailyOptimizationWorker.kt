@@ -44,6 +44,7 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
         val intent = WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
         val cancel = applicationContext.getString(R.string.cancel_optimization_button)
         val notification = createNotification(
+            applicationContext.getString(R.string.optimization_notification_title),
             applicationContext.getString(R.string.optimization_ongoing_notification),
             true,
             NotificationCompat.Action(android.R.drawable.ic_delete, cancel, intent)
@@ -57,6 +58,7 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
      * but that's only set by the
      */
     private fun createNotification(
+        title: String,
         message: String,
         isOngoing: Boolean,
         actions: NotificationCompat.Action?
@@ -69,12 +71,12 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
 
         return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(applicationContext.getString(R.string.optimization_notification_title))
+            .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVibrate(LongArray(0))
-            .setTicker(applicationContext.getString(R.string.optimization_notification_title))
+            .setTicker(title)
             .setOngoing(isOngoing)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -152,28 +154,33 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
                 .setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
                 .setConstraints(WORK_MANAGER_CONSTRAINTS)
                 .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
+                .setInputData(workDataOf(Pair(applicationContext.getString(R.string.initial_optimization_input_data), "true")))
                 .build()
 
             WorkManager.getInstance(applicationContext)
-                .enqueueUniqueWork(
-                    DAILY_OPTIMIZATION_WORK_NAME,
-                    ExistingWorkPolicy.KEEP,
+                .enqueue(
                     dailyOptimizationWorkRequest
                 )
 
-            // Notify the user of successful optimization
-            showNotification(
-                createNotification(
-                    applicationContext.getString(R.string.optimization_succeeded_notification),
-                    false,
-                    null
+
+            // Notify the user of successful optimization only on the first optimization
+            val isFirstOptimization = inputData.getString(applicationContext.getString(R.string.initial_optimization_input_data))
+            if (isFirstOptimization == "true") {
+                showNotification(
+                    createNotification(
+                        applicationContext.getString(R.string.optimization_successful_notification_title),
+                        applicationContext.getString(R.string.optimization_succeeded_notification),
+                        false,
+                        null
+                    )
                 )
-            )
+            }
             Result.success()
         } catch (e: Exception) {
             // Notify the user of failed optimization
             showNotification(
                 createNotification(
+                    applicationContext.getString(R.string.optimization_failed_notification_title),
                     applicationContext.getString(R.string.optimization_failed_notification),
                     false,
                     null

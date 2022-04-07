@@ -6,16 +6,21 @@ import android.os.Bundle
 import android.widget.CheckBox
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import com.circadian.sense.NUM_DATA_POINTS_PER_DAY
+import com.circadian.sense.NUM_DAYS
 import com.circadian.sense.R
 import com.circadian.sense.databinding.ActivityVisualizationBinding
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.AxisBase
+import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.*
 import java.util.concurrent.TimeUnit
 import android.content.res.Configuration as resConfig
@@ -25,7 +30,7 @@ class VisualizationActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityVisualizationBinding
 
-    private lateinit var mVizChart: LineChart
+    private lateinit var mDailyDataChart: LineChart
     private lateinit var mChartDataSets: ArrayList<ILineDataSet>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,6 +38,7 @@ class VisualizationActivity : AppCompatActivity() {
 
         // Create the same VizViewModel that VisualizationFragment uses
         val vizViewModel: VisualizationViewModel by viewModels()
+//        vizViewModel.createChartDataset()
 
         // Inflate layout
         binding = ActivityVisualizationBinding.inflate(layoutInflater)
@@ -45,7 +51,7 @@ class VisualizationActivity : AppCompatActivity() {
         val filteredDataCheckBox = binding.filteredDataCheckBox
 
         // The chart for data visualization
-        mVizChart = binding.visualizationChart
+        mDailyDataChart = binding.dailyDataChart
         createVisualizationChart()
 
         // Set the minimize button according to the user theme
@@ -69,7 +75,7 @@ class VisualizationActivity : AppCompatActivity() {
         }
 
         // Observe the data we need for mVizChart
-        vizViewModel.chartData.observe(this) {
+        vizViewModel.dailyDataChartDataset.observe(this) {
             // Enable the checkboxes and set them to whether their corresponding data is visible
             // Useful for retaining their state on screen switches
             rawDataCheckBox.isEnabled = true
@@ -79,8 +85,8 @@ class VisualizationActivity : AppCompatActivity() {
 
             // Populate this.mChartDataSets with the liveDataset and draw mVizChart
             mChartDataSets = it
-            mVizChart.data = LineData(mChartDataSets)
-            mVizChart.invalidate()
+            mDailyDataChart.data = LineData(mChartDataSets)
+            mDailyDataChart.invalidate()
         }
 
     }
@@ -89,28 +95,28 @@ class VisualizationActivity : AppCompatActivity() {
      * Creates the visualization chart and sets all its default values before the plots are made
      */
     private fun createVisualizationChart() {
-        mVizChart.description.isEnabled = false
-        mVizChart.setDrawGridBackground(false)
-        mVizChart.isDragEnabled = true
-        mVizChart.setScaleEnabled(true)
-        mVizChart.setPinchZoom(false)
-        mVizChart.animateXY(200, 200)
-        mVizChart.axisRight.isEnabled = false
-        mVizChart.setDrawMarkers(false)
+        mDailyDataChart.description.isEnabled = false
+        mDailyDataChart.setDrawGridBackground(false)
+        mDailyDataChart.isDragEnabled = true
+        mDailyDataChart.setScaleEnabled(true)
+        mDailyDataChart.setPinchZoom(false)
+        mDailyDataChart.animateXY(200, 200)
+        mDailyDataChart.axisRight.isEnabled = false
+        mDailyDataChart.setDrawMarkers(false)
 
         val tf = Typeface.SANS_SERIF
-        mVizChart.legend.typeface = tf
+        mDailyDataChart.legend.typeface = tf
 
-        val leftAxis = mVizChart.axisLeft
+        val leftAxis = mDailyDataChart.axisLeft
         leftAxis.typeface = tf
         leftAxis.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
         leftAxis.spaceTop = 20f
 
-        val xAxis = mVizChart.xAxis
+        val xAxis = mDailyDataChart.xAxis
         xAxis.isEnabled = true
         xAxis.typeface = tf
-        xAxis.setLabelCount(5, false)
-        xAxis.granularity = 1440 / 48f
+        xAxis.setLabelCount(5, true)
+        xAxis.granularity = NUM_DATA_POINTS_PER_DAY / 48f
         xAxis.setCenterAxisLabels(false)
 
         // Convert the x-axis millis values to string timestamps
@@ -127,15 +133,33 @@ class VisualizationActivity : AppCompatActivity() {
         val nightMod =
             this.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
         if (nightMod == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
-            mVizChart.setBackgroundColor(Color.BLACK)
+            mDailyDataChart.setBackgroundColor(Color.BLACK)
             leftAxis.textColor = Color.WHITE
             xAxis.textColor = Color.WHITE
-            mVizChart.legend.textColor = Color.WHITE
+            mDailyDataChart.legend.textColor = Color.WHITE
         } else {
-            mVizChart.setBackgroundColor(Color.WHITE)
+            mDailyDataChart.setBackgroundColor(Color.WHITE)
             leftAxis.textColor = Color.BLACK
             xAxis.textColor = Color.BLACK
-            mVizChart.legend.textColor = Color.BLACK
+            mDailyDataChart.legend.textColor = Color.BLACK
+        }
+
+        // Get NUM_DAYS ago in Epoch Minutes
+        val day1InMinutes = TimeUnit.SECONDS.toMinutes(
+            LocalDate.now()
+                .minusDays(NUM_DAYS.toLong())
+                .atStartOfDay(ZoneId.systemDefault())
+                .toEpochSecond()
+        )
+        for (i in 0 until NUM_DAYS){
+            val llXAxis = LimitLine( (day1InMinutes+(NUM_DATA_POINTS_PER_DAY*i.toFloat())), "Day ${i + 1}")
+            llXAxis.lineWidth = 1f
+            llXAxis.lineColor = xAxis.textColor
+            llXAxis.textColor = xAxis.textColor
+            llXAxis.enableDashedLine(10f, 10f, 0f)
+            llXAxis.labelPosition = LimitLine.LimitLabelPosition.RIGHT_BOTTOM
+            xAxis.addLimitLine(llXAxis)
+//            Log.i(TAG, "Added limit lines $i")
         }
     }
 
@@ -153,6 +177,6 @@ class VisualizationActivity : AppCompatActivity() {
                 mChartDataSets[0].isVisible = binding.rawDataCheckBox.isChecked
             }
         }
-        mVizChart.invalidate()
+        mDailyDataChart.invalidate()
     }
 }

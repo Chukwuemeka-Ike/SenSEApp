@@ -43,7 +43,7 @@ class UserDataManager(private val context: Context) {
 
     /**
      * Loads the filter data from app-specific storage. Returns null if there's nothing saved
-     * @return DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
+     * @return DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, gains, gainsTimestamp)
      */
     fun loadUserData(): DataPack? {
         return try {
@@ -67,6 +67,9 @@ class UserDataManager(private val context: Context) {
             val tJSON = jsonData.getJSONArray(timeKey)
             val yJSON = jsonData.getJSONArray(yKey)
             val yHatJSON = jsonData.getJSONArray(yHatKey)
+            val xHatJSON = jsonData.getJSONArray(xHatKey)
+            val xHat1JSON = xHatJSON.getJSONArray(0)
+            val xHat2JSON = xHatJSON.getJSONArray(1)
             val gainsJSON = jsonData.getJSONArray(gainsKey)
             val dataTimestamp = jsonData.getString(dataTimestampKey)
             val gainsTimestamp = jsonData.getString(gainsTimestampKey)
@@ -77,11 +80,15 @@ class UserDataManager(private val context: Context) {
             val t = FloatArray(dataLength)
             val y = FloatArray(dataLength)
             val yHat = FloatArray(dataLength)
+            val xHat1 = FloatArray(dataLength)
+            val xHat2 = FloatArray(dataLength)
 
             for (i in 0 until dataLength) {
                 t[i] = tJSON.getDouble(i).toFloat()
                 y[i] = yJSON.getDouble(i).toFloat()
                 yHat[i] = yHatJSON.getDouble(i).toFloat()
+                xHat1[i] = xHat1JSON.getDouble(i).toFloat()
+                xHat2[i] = xHat2JSON.getDouble(i).toFloat()
             }
 
             val gains = FloatArray(gainsLength)
@@ -90,7 +97,7 @@ class UserDataManager(private val context: Context) {
             }
 
             Log.i(TAG, "Successfully loaded data")
-            DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
+            DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, gains, gainsTimestamp)
         } catch (exception: IOException) {
             Log.e(TAG, exception.message ?: "IOException")
             null
@@ -109,6 +116,9 @@ class UserDataManager(private val context: Context) {
             val tArray = JSONArray(data.t)
             val yArray = JSONArray(data.y)
             val yHatArray = JSONArray(data.yHat)
+            val xHat1JSON = JSONArray(data.xHat1)
+            val xHat2JSON = JSONArray(data.xHat2)
+            val xHatJSON = JSONArray(listOf(xHat1JSON,xHat2JSON))
             val gainsArray = JSONArray(data.gains)
             val dataTimestamp = data.dataTimestamp
             val gainsTimestamp = data.gainsTimestamp
@@ -116,6 +126,7 @@ class UserDataManager(private val context: Context) {
                 |${timeKey}:${tArray}, 
                 |${yKey}:${yArray}, 
                 |${yHatKey}:${yHatArray},
+                |${xHatKey}:${xHatJSON},
                 |${gainsKey}:${gainsArray},
                 |${dataTimestampKey}: ${dataTimestamp},
                 |${gainsTimestampKey}: ${gainsTimestamp}
@@ -330,6 +341,7 @@ class UserDataManager(private val context: Context) {
         private const val timeKey = "t"
         private const val yKey = "y"
         private const val yHatKey = "yHat"
+        private const val xHatKey = "xHat"
         private const val dataTimestampKey = "dataTimestamp"
         private const val gainsKey = "L"
         private const val gainsTimestampKey = "gainsTimestamp"

@@ -1,9 +1,18 @@
 package com.circadian.sense.utilities
 
 /**
- * Data class to package the most useful data
+ * Data class to package the most useful filter data for the app
  */
-data class DataPack(val t: FloatArray, val y: FloatArray, val yHat: FloatArray, val dataTimestamp: String, var gains: FloatArray, val gainsTimestamp: String) {
+data class DataPack(
+    val t: FloatArray,
+    val y: FloatArray,
+    val yHat: FloatArray,
+    val xHat1: FloatArray,
+    val xHat2: FloatArray,
+    val dataTimestamp: String,
+    var gains: FloatArray,
+    val gainsTimestamp: String
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

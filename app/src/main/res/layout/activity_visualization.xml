@@ -47,7 +47,7 @@
         android:contentDescription="@string/minimize_fullscreen_description" />
 
     <com.github.mikephil.charting.charts.LineChart
-        android:id="@+id/visualizationChart"
+        android:id="@+id/dailyDataChart"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center_horizontal"

@@ -36,6 +36,64 @@ class ObserverBasedFilter:
     __rEnd = 8
     __mid = (__lStart+__rEnd)/2
 
+    def estimateAverageDailyPhase(self, xHat1: np.ndarray, xHat2: np.ndarray, numDays: int, numDataPointsPerDay: int) -> np.ndarray:
+        '''
+            Computes the frequency spectrum of the input [y] sampled according to [t]
+            Parameters:
+                xHat (np.ndarray) - filter state 1 and 2 
+                numDays (int) - number of days 
+                numDataPointsPerDay (int) - number of data points per day - 1440 for 1-minute intervals
+            Returns:
+                averageDailyPhase (np.ndarray) - array of average daily phase difference from day 1 in hours
+        '''
+
+        x1 = xHat1
+        x2 = xHat2
+        # print(xHat1)
+        # print(xHat2)
+        theta = np.mod(-np.arctan2(x2, self.__omg*x1) + pi/2, 2*pi) - pi
+        # print(theta.shape)
+
+        averageDailyPhase = np.zeros([1, numDays], dtype = float)
+        day1RangeStart = 0
+        day1RangeEnd = numDataPointsPerDay
+
+        for i in range(0, numDays):
+            day2RangeStart = (numDataPointsPerDay*i)
+            day2RangeEnd = (numDataPointsPerDay*(i+1))
+            # print(day2RangeStart, day2RangeEnd)
+            # print((theta[0,day2RangeStart:day2RangeEnd]))
+            # print(np.unwrap(theta[day2RangeStart:day2RangeEnd]))
+            # print((np.unwrap(theta[day2RangeStart:day2RangeEnd])).shape)
+            # print(np.unwrap(theta[day1RangeStart:day1RangeEnd]) - np.unwrap(theta[day2RangeStart:day2RangeEnd]))
+            # print((np.unwrap(theta[day1RangeStart:day1RangeEnd]) - np.unwrap(theta[day2RangeStart:day2RangeEnd])).shape)
+            # print((1/self.__omg)*np.mean( np.unwrap(theta[day1RangeStart:day1RangeEnd]) - np.unwrap(theta[day2RangeStart:day2RangeEnd]), axis=1))
+
+            averageDailyPhase[0, i] = (1/self.__omg)*np.mean( np.unwrap(theta[0, day1RangeStart:day1RangeEnd]) - np.unwrap(theta[0, day2RangeStart:day2RangeEnd]), axis=0)
+
+        averageDailyPhase = np.mod(12+averageDailyPhase, 24) - 12
+        # print(xHat1.shape)
+        # print(averageDailyPhase)
+        return averageDailyPhase
+
+#         function [theta, phaseShift] = estimatePhaseShift(xHat, omg, day1, day2)
+#         % Estimate the phase shift in hours given the OBF output and state
+#         % evolution
+
+#         % Isolate the first Harmonic and its derivative
+#         x1 = xHat(1,:);     x2 = xHat(2,:);
+
+#         % Calculate the phase based on x1 and x2
+#         theta = mod(-atan2(x2, omg*x1) + pi/2, 2*pi)-pi;
+
+#         % Calculate the phase shift between day 1 and 2
+#         day1Series = (( (day1-1)*24*60)+1):(day1*24*60);
+#         day2Series = (( (day2-1)*24*60)+1):(day2*24*60);
+#         phaseShift = (1/omg)*mean(unwrap(theta(day1Series)) - unwrap(theta(day2Series)) );
+# %             phaseShift = (1/omg)*(mean(unwrap(theta(end-8*24*60+1:end-7*24*60)...
+#                            %                                               - unwrap(theta(end-1*24*60+1:end))) ) );
+# end
+
     def simulateDynamics(self, t:np.ndarray, y: np.ndarray, A: np.ndarray, B: np.ndarray, C: np.ndarray, D: np.ndarray) -> np.ndarray:
         '''
             Simulates the system dynamics on the input data [y]
