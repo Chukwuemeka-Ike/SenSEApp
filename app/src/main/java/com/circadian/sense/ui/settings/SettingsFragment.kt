@@ -233,7 +233,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     @WorkerThread
     private fun initializeClient() {
         if (mConfiguration.getClientId() != null) {
-            Log.i(TAG, "Using static client ID: " + mConfiguration.getClientId())
+            Log.i(TAG, "Using static client ID")
             // use a statically configured client ID
             mClientId.set(mConfiguration.getClientId())
             requireActivity().runOnUiThread { this.initializeAuthRequest() }
@@ -380,7 +380,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         authException: AuthorizationException?
     ): Boolean {
         mAuthStateManager.updateAfterTokenResponse(tokenResponse, authException)
-        requireActivity().runOnUiThread { displayAuthorized() }
+//        requireActivity().runOnUiThread { displayAuthorized() }
         return true
     }
 

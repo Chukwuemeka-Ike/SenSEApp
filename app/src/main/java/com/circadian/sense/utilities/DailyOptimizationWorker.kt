@@ -16,14 +16,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.system.measureTimeMillis
 
+/**
+ * DailyOptimizationWorker that takes care of the daily user data and filter updates using
+ * WorkManager. It's used in SettingsFragment to do the initial filter optimization, then sets
+ * up the next update whenever it completes
+ */
 class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
     private val TAG = "DailyOptimizationWorker"
     private val mOrchestrator: Orchestrator
-
     private val mNotificationManager =
         appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -36,8 +39,8 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
     }
 
     /**
-     * Creates an instance of ForegroundInfo which can be used to update the ongoing notification
-     * @param [progress]
+     * Creates an instance of ForegroundInfo which can be used to update the ongoing optimization
+     * notification
      */
     private fun createForegroundInfo(): ForegroundInfo {
         // This PendingIntent can be used to cancel the worker
@@ -49,13 +52,37 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
             true,
             NotificationCompat.Action(android.R.drawable.ic_delete, cancel, intent)
         )
-
         return ForegroundInfo(OPTIMIZATION_ONGOING_NOTIFICATION_ID, notification)
     }
 
     /**
-     * Creates a notification with the message and action. It can be an ongoing notification,
+     * Create the NotificationChannel, but only on API 26+ because
+     * the NotificationChannel class is new and not in the support library
+     */
+    private fun createChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = NOTIFICATION_CHANNEL_NAME
+            val description = NOTIFICATION_CHANNEL_DESCRIPTION
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(CHANNEL_ID, name, importance)
+            channel.description = description
+
+            //        // Add the channel
+            //        val notificationManager =
+            //            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
+            //                    as NotificationManager?
+
+            mNotificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * Creates a notification with the given parameters. It can be an ongoing notification,
      * but that's only set by the
+     * @param [title] - title of the notification
+     * @param [message] - message to display
+     * @param [isOngoing] - boolean to make the notification an ongoing one. Only used when the optimization is ongoing
+     * @param [actions] - actions to add to the notification if any. e.g. a cancel button
      */
     private fun createNotification(
         title: String,
@@ -82,36 +109,16 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
             .setAutoCancel(true)
             // Add the cancel action to the notification which can
             // be used to cancel the worker
-            .addAction(actions)
+//            .addAction(actions)
             .build()
     }
 
     /**
-     * Shows the notification with the object's notification manager
+     * Shows the notification with the object's notification manager. Only used for notifications
+     * at the end of the optimization. TODO: Simplify the overall logic
      */
     private fun showNotification(notification: Notification) {
         mNotificationManager.notify(OPTIMIZATION_ENDED_NOTIFICATION_ID, notification)
-    }
-
-    /**
-     * Create the NotificationChannel, but only on API 26+ because
-     * the NotificationChannel class is new and not in the support library
-     */
-    private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = NOTIFICATION_CHANNEL_NAME
-            val description = NOTIFICATION_CHANNEL_DESCRIPTION
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, name, importance)
-            channel.description = description
-
-            //        // Add the channel
-            //        val notificationManager =
-            //            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
-            //                    as NotificationManager?
-
-            mNotificationManager.createNotificationChannel(channel)
-        }
     }
 
     /**
@@ -124,44 +131,39 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
         Log.i(TAG, "Performing daily optimization")
 
         try {
+            // Get fresh data over the network
+            val data = mOrchestrator.getFreshData()
+            if (data != null) {
+                Log.i(TAG, "Successfully got fresh data with work manager")
+            } else {
+                Log.d(TAG, "Null data received")
+            }
 
-            val elapsed = measureTimeMillis {
-                // Get fresh data from the network
-                val data = mOrchestrator.getFreshData()
-                if (data != null) {
-                    Log.i(TAG, "Successfully got fresh data with work manager")
-                } else {
-                    Log.d(TAG, "Null data received")
-                }
-            }; Log.i(TAG, "Total time taken using WorkManager: $elapsed")
-
-            // Schedule the next run at 01:30am the next day
+            // Schedule the next run at 02:45am the next day
             val currentDate = Calendar.getInstance()
             val dueDate = Calendar.getInstance()
 
-            dueDate.set(Calendar.HOUR_OF_DAY, DAILY_OPTIMIZATION_HOUR)
-            dueDate.set(Calendar.MINUTE, DAILY_OPTIMIZATION_MINUTE)
-            dueDate.set(Calendar.SECOND, DAILY_OPTIMIZATION_SECOND)
+            dueDate.set(Calendar.HOUR_OF_DAY, 2)
+            dueDate.set(Calendar.MINUTE, 45)
+            dueDate.set(Calendar.SECOND, 0)
 
             // If we're already past the time today, schedule the next one for tomorrow
             if (dueDate.before(currentDate)) {
                 dueDate.add(Calendar.HOUR_OF_DAY, 24)
             }
             val timeDiff = dueDate.timeInMillis - currentDate.timeInMillis
+            Log.i(TAG, "Calculated timeDiff: $timeDiff")
 
             // Create next work request
-            val dailyOptimizationWorkRequest = OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
-                .setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
-                .setConstraints(WORK_MANAGER_CONSTRAINTS)
-                .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
-                .setInputData(workDataOf(Pair(applicationContext.getString(R.string.initial_optimization_input_data), "true")))
-                .build()
+            val dailyOptimizationWorkRequest =
+                OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
+                    .setConstraints(WORK_MANAGER_CONSTRAINTS)
+                    .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
+                    .setInputData(workDataOf(Pair(applicationContext.getString(R.string.initial_optimization_input_data), "true")))
+                    .setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
+                    .build()
 
-            WorkManager.getInstance(applicationContext)
-                .enqueue(
-                    dailyOptimizationWorkRequest
-                )
-
+            WorkManager.getInstance(applicationContext).enqueue(dailyOptimizationWorkRequest)
 
             // Notify the user of successful optimization only on the first optimization
             val isFirstOptimization = inputData.getString(applicationContext.getString(R.string.initial_optimization_input_data))
@@ -175,6 +177,7 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
                     )
                 )
             }
+            Log.i(TAG, "Successfully scheduled next filter update")
             Result.success()
         } catch (e: Exception) {
             // Notify the user of failed optimization
@@ -187,7 +190,17 @@ class DailyOptimizationWorker(appContext: Context, workerParams: WorkerParameter
                 )
             )
             Log.e(TAG, "Error updating user data", e)
-            Result.failure()
+
+//            // Create another work request to run the very next time the app is opened
+//            val dailyOptimizationWorkRequest =
+//                OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
+//                    .setConstraints(WORK_MANAGER_CONSTRAINTS)
+//                    .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
+//                    .setInputData(workDataOf(Pair(applicationContext.getString(R.string.initial_optimization_input_data), "true")))
+//                    .build()
+//            WorkManager.getInstance(applicationContext).enqueue(dailyOptimizationWorkRequest)
+
+            Result.retry()
         }
     }
 

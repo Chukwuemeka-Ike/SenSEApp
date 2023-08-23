@@ -5,6 +5,7 @@ import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.circadian.sense.NUM_DATA_POINTS_PER_DAY
 import com.circadian.sense.NUM_DAYS
+import com.circadian.sense.NUM_DAYS_OFFSET
 
 /**
  * ObserverBasedFilter class to organize the filter's two main functionalities
@@ -76,7 +77,14 @@ class ObserverBasedFilter {
             // Call optimizeFilter function which returns a "list" of PyObjects arranged:
             // [[phase1, phase2, phase3, ...],
             // [sorted indices]]
-            val averageDailyPhase = module.callAttr(ESTIMATE_AVG_DAILY_PHASE_KEY, xHat1, xHat2, NUM_DAYS, NUM_DATA_POINTS_PER_DAY).asList()
+            val averageDailyPhase = module.callAttr(
+                ESTIMATE_AVG_DAILY_PHASE_KEY,
+                xHat1,
+                xHat2,
+                NUM_DAYS,
+                NUM_DAYS_OFFSET,
+                NUM_DATA_POINTS_PER_DAY
+            ).asList()
             Log.i(TAG, "Average daily phase: ${averageDailyPhase[0]}")
             Log.i(TAG, "Sort indices: ${averageDailyPhase[1]}")
 

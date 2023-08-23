@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 import time
 import itertools
 
-
 # s = '{"id":01, "name": "Emily", "language": ["C++", "Python"]}'
 data_key = 'activities-heart-intraday'
 dataset_key = 'dataset'
+
 
 def main(inputData: str):
     '''
@@ -33,7 +33,7 @@ def main(inputData: str):
     # print(labels1[:4])
     # print(labels2[:4])
     # print(labels3)
-    L = np.array([0.03, 0.003, 0.]).reshape(3,1)
+    L = np.array([0.03, 0.003, 0.]).reshape(3, 1)
 
     # print(simulateDynamics(inputData, L))
     startTime = time.time()
@@ -43,6 +43,7 @@ def main(inputData: str):
     print('Execution time in seconds: ' + str(executionTime))
     print(L)
     # print(type(L))
+
 
 def simulateDynamics(t: np.ndarray, y: np.ndarray, L: np.ndarray) -> np.ndarray:
     '''
@@ -63,6 +64,7 @@ def simulateDynamics(t: np.ndarray, y: np.ndarray, L: np.ndarray) -> np.ndarray:
 
     return ObserverBasedFilter().simulateDynamics(t, y, A, B, C, D)
 
+
 def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     '''
         Parses the input data for the time and value vectors, then optimizes 
@@ -77,17 +79,31 @@ def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
 
     # Optimize the filter and return the optimal gains
     # np.array(t),np.array(y)
-    return ObserverBasedFilter().optimizeFilter(t,y)
+    return ObserverBasedFilter().optimizeFilter(t, y)
 
-def estimateAverageDailyPhase(xHat1In: np.ndarray, xHat2In: np.ndarray, numDays: int, numDataPointsPerDay: int) -> np.ndarray:
+
+def estimateAverageDailyPhase(xHat1In: np.ndarray, xHat2In: np.ndarray, numDays: int,
+                              numDaysOffset: int, numDataPointsPerDay: int) -> np.ndarray:
     '''
-    
+        Computes the average daily phase of the last numDays-numDaysOffset 
+        Returns:
+            avgDailyPhase (np.ndarray) - average daily phase
     '''
-    xHat1 = np.array(xHat1In).reshape([1, numDays*numDataPointsPerDay])
-    xHat2 = np.array(xHat2In).reshape([1, numDays*numDataPointsPerDay])
-    averageDailyPhase = ObserverBasedFilter().estimateAverageDailyPhase(xHat1, xHat2, numDays, numDataPointsPerDay)
+    xHat1 = np.array(xHat1In).reshape([1, numDays * numDataPointsPerDay])
+    xHat2 = np.array(xHat2In).reshape([1, numDays * numDataPointsPerDay])
+    # print(xHat1.shape)
+    xHat1 = xHat1[:, numDaysOffset*numDataPointsPerDay:]
+    xHat2 = xHat2[:, numDaysOffset*numDataPointsPerDay:]
+    # print(xHat1.shape)
+    averageDailyPhase = ObserverBasedFilter().estimateAverageDailyPhase(xHat1, xHat2, numDays-numDaysOffset,
+                                                                        numDataPointsPerDay)
+    # print(averageDailyPhase.shape)
+    # print(averageDailyPhase)
+    # averageDailyPhase = averageDailyPhase[:, numDaysOffset:]
+    # print(averageDailyPhase)
     idx = np.argsort(averageDailyPhase)
     return np.append(averageDailyPhase, idx, axis=0)
+
 
 def parseUserData(inputData: str) -> np.ndarray:
     '''
@@ -122,7 +138,8 @@ def parseUserData(inputData: str) -> np.ndarray:
 
     return t, y
 
+
 if __name__ == "__main__":
     f = open('C:/Users/chukw/Downloads/heart.json')
-    
+
     main(f.read())

@@ -13,10 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.circadian.sense.DAILY_OPTIMIZATION_WORKER_TAG
-import com.circadian.sense.NUM_DATA_POINTS_PER_DAY
-import com.circadian.sense.NUM_DAYS
-import com.circadian.sense.R
+import com.circadian.sense.*
 import com.circadian.sense.databinding.FragmentVisualizationBinding
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
@@ -124,17 +121,18 @@ class VisualizationFragment : Fragment() {
         WorkManager.getInstance(requireContext())
             .getWorkInfosByTagLiveData(DAILY_OPTIMIZATION_WORKER_TAG)
             .observe(viewLifecycleOwner) { workInfos ->
-                if (workInfos.isNotEmpty() && mDailyDataChart.data == null && workInfos[0] != null) {
-                    Log.i(TAG, "WEJAILEJF")
-                    Log.i(TAG, "Work info: ${workInfos[0].state}")
-                    if ((workInfos[0].state == WorkInfo.State.ENQUEUED) || (workInfos[0].state == WorkInfo.State.SUCCEEDED)) {
+                if (workInfos.isNotEmpty() && mDailyDataChart.data == null && workInfos.last() != null) {
+                    Log.i(TAG, "Last work info: ${workInfos.last()}")
+                    Log.i(TAG, "Last work info: ${workInfos.last().state}")
+                    Log.i(TAG, "Work infos: ${workInfos.size}")
+                    if ((workInfos.last().state == WorkInfo.State.ENQUEUED) || (workInfos.last().state == WorkInfo.State.SUCCEEDED)) {
                         Log.i(
                             TAG,
-                            "Work in successful or enqueued state, so creating chart dataset"
+                            "Work in successful or enqueued state, so attempting to create chart dataset"
                         )
                         vizViewModel.createChartDataset()
-                        loadingContainer.visibility = View.GONE
-                    } else if (workInfos[0].state == WorkInfo.State.RUNNING) {
+                        loadingContainer.visibility = View.VISIBLE
+                    } else if (workInfos.last().state == WorkInfo.State.RUNNING) {
                         Log.i(TAG, "Work currently running")
                         loadingContainer.visibility = View.VISIBLE
                     }
@@ -244,7 +242,7 @@ class VisualizationFragment : Fragment() {
         mAveragePhaseChart.axisLeft.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART)
         mAveragePhaseChart.axisLeft.spaceTop = 20f
         mAveragePhaseChart.axisLeft.axisMinimum = 0f
-        mAveragePhaseChart.axisLeft.axisMaximum = NUM_DAYS.toFloat() + 1
+        mAveragePhaseChart.axisLeft.axisMaximum = NUM_DAYS.toFloat() + 1 - NUM_DAYS_OFFSET
         mAveragePhaseChart.axisLeft.isEnabled = true
         mAveragePhaseChart.axisLeft.isInverted = true
         mAveragePhaseChart.axisLeft.setDrawLimitLinesBehindData(true)
@@ -254,7 +252,7 @@ class VisualizationFragment : Fragment() {
         mAveragePhaseChart.xAxis.axisMaximum = 12f
 
 
-        // Color the chart according to user theme
+        // Color the charts according to user theme
         val nightMod =
             requireActivity().resources.configuration.uiMode and resConfiguration.UI_MODE_NIGHT_MASK
         if (nightMod == resConfiguration.UI_MODE_NIGHT_YES) {
@@ -287,7 +285,7 @@ class VisualizationFragment : Fragment() {
 
         for (i in 0 until NUM_DAYS) {
             val llXAxis =
-                LimitLine((day1InMinutes + (NUM_DATA_POINTS_PER_DAY * i.toFloat())), "Day ${i + 1}")
+                LimitLine((day1InMinutes + (NUM_DATA_POINTS_PER_DAY * i.toFloat())), "Day ${i - NUM_DAYS_OFFSET + 1}")
             llXAxis.lineWidth = 1f
             llXAxis.lineColor = mDailyDataChart.xAxis.textColor
             llXAxis.textColor = mDailyDataChart.xAxis.textColor
@@ -296,7 +294,7 @@ class VisualizationFragment : Fragment() {
             mDailyDataChart.xAxis.addLimitLine(llXAxis)
         }
 
-        for (i in 1 until NUM_DAYS + 1) {
+        for (i in 1 until NUM_DAYS - NUM_DAYS_OFFSET + 1) {
             val llXAxis = LimitLine(i.toFloat(), "Day ${i}")
             llXAxis.lineWidth = 1f
             llXAxis.lineColor = mAveragePhaseChart.xAxis.textColor

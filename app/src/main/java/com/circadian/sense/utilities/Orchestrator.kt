@@ -23,9 +23,9 @@ class Orchestrator(
 
     private val TAG = "Orchestrator"
 
+    private val mAuthService: AuthorizationService = AuthorizationService(mContext)
     private val mAuthStateManager: AuthStateManager = AuthStateManager.getInstance(mContext)
     private val mConfiguration: Configuration = Configuration.getInstance(mContext)
-    private val mAuthService: AuthorizationService = AuthorizationService(mContext)
     private val mOBF: ObserverBasedFilter = ObserverBasedFilter()
     private val mUserDataManager: UserDataManager = UserDataManager(mContext)
 
@@ -187,7 +187,7 @@ class Orchestrator(
         suspendCoroutine {
             mAuthStateManager.current.performActionWithFreshTokens(
                 mAuthService
-            ) { accessToken, idToken, ex ->
+            ) { accessToken, _, _ ->
 //                Log.i(TAG, "${accessToken}, ${idToken}, $ex")
                 mAuthStateManager.replace(mAuthStateManager.current) // Update the state
                 val userId = getUserID()

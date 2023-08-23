@@ -2,6 +2,7 @@ from math import pi, floor
 import numpy as np
 from scipy import signal
 from scipy.fft import fft
+from scipy.linalg import expm
 import itertools
 
 INT_MAX = 2147483647
@@ -23,6 +24,15 @@ class ObserverBasedFilter:
     __gamma_d = 1
     __order = 3
     __stateLength = (2 * __order + 1)
+
+    # Create the autonomous A matrix given specific size. Currently hardcoded to dt=1/60
+    # TODO: Make this better
+    Ac = np.zeros([__stateLength, __stateLength], dtype = float)
+    for k in range(__order):
+        i = (1 + k) * 2
+        k = k + 1 #handles the one off error
+        Ac[i - 2:i, i - 2:i] = [[0, 1], [float(-(k * __omg) ** 2), 0]]
+    __A_auto = expm(Ac*1/60)
     
     # Optimization hyperparameters
     __mu = 100
@@ -50,7 +60,7 @@ class ObserverBasedFilter:
         x1 = xHat1
         x2 = xHat2
         # print(xHat1)
-        # print(xHat2)
+        # print(xHat2.shape)
         theta = np.mod(-np.arctan2(x2, self.__omg*x1) + pi/2, 2*pi) - pi
         # print(theta.shape)
 
@@ -76,24 +86,6 @@ class ObserverBasedFilter:
         # print(averageDailyPhase)
         return averageDailyPhase
 
-#         function [theta, phaseShift] = estimatePhaseShift(xHat, omg, day1, day2)
-#         % Estimate the phase shift in hours given the OBF output and state
-#         % evolution
-
-#         % Isolate the first Harmonic and its derivative
-#         x1 = xHat(1,:);     x2 = xHat(2,:);
-
-#         % Calculate the phase based on x1 and x2
-#         theta = mod(-atan2(x2, omg*x1) + pi/2, 2*pi)-pi;
-
-#         % Calculate the phase shift between day 1 and 2
-#         day1Series = (( (day1-1)*24*60)+1):(day1*24*60);
-#         day2Series = (( (day2-1)*24*60)+1):(day2*24*60);
-#         phaseShift = (1/omg)*mean(unwrap(theta(day1Series)) - unwrap(theta(day2Series)) );
-# %             phaseShift = (1/omg)*(mean(unwrap(theta(end-8*24*60+1:end-7*24*60)...
-#                            %                                               - unwrap(theta(end-1*24*60+1:end))) ) );
-# end
-
     def simulateDynamics(self, t:np.ndarray, y: np.ndarray, A: np.ndarray, B: np.ndarray, C: np.ndarray, D: np.ndarray) -> np.ndarray:
         '''
             Simulates the system dynamics on the input data [y]
@@ -117,7 +109,7 @@ class ObserverBasedFilter:
             # The reshapes are all to make sure it's the right dimension
             # Update the current state based on previous filter state and previous input
             if y[j-1] == 0:
-                xHat[:,j] = np.reshape(np.matmul(A,xHat[:,j-1]).T, (self.__stateLength))
+                xHat[:,j] = np.reshape(np.matmul(self.__A_auto,xHat[:,j-1]).T, (self.__stateLength))
             else:
                 xHat[:,j] = np.reshape(np.reshape(np.matmul(A,xHat[:,j-1]).T, (self.__stateLength,1)) + (B*y[j-1]), (self.__stateLength))
         
@@ -177,6 +169,7 @@ class ObserverBasedFilter:
 
             # Compute the output spectrum and corresponding cost
             filteredSpectrum, _, _ = self.__computeSpectrum(t, yHat)
+            filteredSpectrum = filteredSpectrum.reshape(originalSpectrum.shape)
             cost[member] = self.__computeCost(originalSpectrum, filteredSpectrum, f)
         
         # Run the optimization for __max_iterations
@@ -206,6 +199,7 @@ class ObserverBasedFilter:
 
                 # Compute the output spectrum and corresponding cost
                 filteredSpectrum, _, _ = self.__computeSpectrum(t, yHat)
+                filteredSpectrum = filteredSpectrum.reshape(originalSpectrum.shape)
                 newCost[j] = self.__computeCost(originalSpectrum, filteredSpectrum, f)
             
             # Append the newGen and newCost to allow us work on one array each

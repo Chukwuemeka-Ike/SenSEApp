@@ -91,7 +91,7 @@
     <string name="optimization_ongoing_notification">We\'re optimizing the filter on your data. This can take up to 15 minutes, so we\'ll notify you once it\'s done.</string>
     <string name="optimization_succeeded_notification">Successfully updated the filter with new data</string>
     <string name="optimization_failed_notification">The filter update failed</string>
-    <string name="updating_filter_data">Updating filter data</string>
+    <string name="loading_container_text">Getting filter data</string>
     <string name="optimization_successful_notification_title">Optimization successful</string>
     <string name="optimization_failed_notification_title">Filter update failed</string>
     <string name="initial_optimization_input_data">Initial optimization</string>

@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:name="com.chaquo.python.android.PyApplication"
-    package="com.circadian.sense">
+    android:name="com.chaquo.python.android.PyApplication">
 
     <uses-permission android:name="android.permission.INTERNET" />
 

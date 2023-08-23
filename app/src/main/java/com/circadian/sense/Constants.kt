@@ -25,9 +25,9 @@ const val YHAT_LABEL = "Filtered Output"
 const val AVERAGE_DAILY_PHASE_LABEL = "Average Daily Circadian Phase Relative to Day 1 (hours)"
 
 const val DAILY_OPTIMIZATION_WORK_NAME = "PERIODIC_FILTER_OPTIMIZATION"
-const val DAILY_OPTIMIZATION_HOUR = 0
-const val DAILY_OPTIMIZATION_MINUTE = 30
-const val DAILY_OPTIMIZATION_SECOND = 0
+//const val DAILY_OPTIMIZATION_HOUR = 0
+//const val DAILY_OPTIMIZATION_MINUTE = 30
+//const val DAILY_OPTIMIZATION_SECOND = 0
 
 val WORK_MANAGER_CONSTRAINTS = Constraints.Builder()
     .setRequiredNetworkType(NetworkType.CONNECTED)

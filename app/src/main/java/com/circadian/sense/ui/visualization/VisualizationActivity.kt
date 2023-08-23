@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.circadian.sense.NUM_DATA_POINTS_PER_DAY
 import com.circadian.sense.NUM_DAYS
+import com.circadian.sense.NUM_DAYS_OFFSET
 import com.circadian.sense.R
 import com.circadian.sense.databinding.ActivityVisualizationBinding
 import com.github.mikephil.charting.charts.LineChart
@@ -38,7 +39,7 @@ class VisualizationActivity : AppCompatActivity() {
 
         // Create the same VizViewModel that VisualizationFragment uses
         val vizViewModel: VisualizationViewModel by viewModels()
-//        vizViewModel.createChartDataset()
+        vizViewModel.createChartDataset()
 
         // Inflate layout
         binding = ActivityVisualizationBinding.inflate(layoutInflater)
@@ -151,15 +152,15 @@ class VisualizationActivity : AppCompatActivity() {
                 .atStartOfDay(ZoneId.systemDefault())
                 .toEpochSecond()
         )
-        for (i in 0 until NUM_DAYS){
-            val llXAxis = LimitLine( (day1InMinutes+(NUM_DATA_POINTS_PER_DAY*i.toFloat())), "Day ${i + 1}")
+        for (i in 0 until NUM_DAYS) {
+            val llXAxis =
+                LimitLine((day1InMinutes + (NUM_DATA_POINTS_PER_DAY * i.toFloat())), "Day ${i - NUM_DAYS_OFFSET + 1}")
             llXAxis.lineWidth = 1f
-            llXAxis.lineColor = xAxis.textColor
-            llXAxis.textColor = xAxis.textColor
+            llXAxis.lineColor = mDailyDataChart.xAxis.textColor
+            llXAxis.textColor = mDailyDataChart.xAxis.textColor
             llXAxis.enableDashedLine(10f, 10f, 0f)
             llXAxis.labelPosition = LimitLine.LimitLabelPosition.RIGHT_BOTTOM
-            xAxis.addLimitLine(llXAxis)
-//            Log.i(TAG, "Added limit lines $i")
+            mDailyDataChart.xAxis.addLimitLine(llXAxis)
         }
     }
 

@@ -32,7 +32,7 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
 
     init {
         // Attempt to create the dataset immediately
-        createChartDataset()
+//        createChartDataset()
     }
 
     /**
@@ -113,7 +113,8 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         val rawDataEntries = mutableListOf<Entry>()
         val filterDataEntries = mutableListOf<Entry>()
 
-        for (entry in y.indices) {
+        val startIdx = 1440*NUM_DAYS_OFFSET
+        for (entry in startIdx..y.lastIndex) {
             val x = (day1InMinutes + entry).toFloat()
             rawDataEntries.add(Entry(x, zeroFreeY[entry]))
             filterDataEntries.add(Entry(x, yHat[entry]))
@@ -151,7 +152,9 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         val averagePhaseEntries = mutableListOf<BubbleEntry>()
         val sortIndices = averagePhaseData[1]
         val averagePhases = averagePhaseData[0]
+//        val top = averagePhases.first()
 
+//        val startIdx = NUM_DAYS_OFFSET
         for (entry in sortIndices.indices) {
             val x = sortIndices[entry]
             averagePhaseEntries.add(BubbleEntry(averagePhases[x.toInt()], x+1, 5f))

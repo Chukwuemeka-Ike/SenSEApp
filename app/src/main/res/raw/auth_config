@@ -3,7 +3,7 @@
   "redirect_uri": "app://auth",
   "end_session_redirect_uri": "app://auth",
   "end_session_endpoint": "app://auth",
-  "authorization_scope": "activity heartrate",
+  "authorization_scope": "heartrate",
   "discovery_uri": "",
   "authorization_endpoint_uri": "https://www.fitbit.com/oauth2/authorize?",
   "registration_endpoint_uri": "https://www.fitbit.com/oauth2/authorize?",

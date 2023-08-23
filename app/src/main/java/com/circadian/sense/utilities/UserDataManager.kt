@@ -294,11 +294,16 @@ class UserDataManager(private val context: Context) {
         val dataLength = activitiesIntradayDataset.length()
 
         val numPointsPerDay = 1440
-        val y = FloatArray(numPointsPerDay)
+        val y = FloatArray(numPointsPerDay) //{ 70f }
+
+        // If there's absolutely no data (empty array), return the array of y=0
+        if (dataLength == 0) {
+            return y
+        }
 
         var startIdx = 0    // Index corresponding to timestamp of first data value
         var realIdx = 0     // Idx of where we are in the received data
-        var wantIdx = 0     // Idx of where we want to insert data into y
+        var wantIdx: Int     // Idx of where we want to insert data into y
 
         // Check first timestamp. If the data is not at midnight, set startIdx appropriately
         val midnight = LocalTime.parse("00:00:00")
