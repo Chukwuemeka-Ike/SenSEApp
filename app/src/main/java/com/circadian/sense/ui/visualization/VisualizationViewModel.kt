@@ -22,7 +22,8 @@ import kotlin.system.measureTimeMillis
 class VisualizationViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "VizViewModel"
     private val mUserDataManager: UserDataManager = UserDataManager(application.applicationContext)
-    private val mObserverBasedFilter: ObserverBasedFilter = ObserverBasedFilter()
+//    private val mObserverBasedFilter: ObserverBasedFilter = ObserverBasedFilter()
+    private val mSSKF: SteadyStateKalmanFilter = SteadyStateKalmanFilter()
     private val mOrchestrator = Orchestrator(application.applicationContext)
 
     private val _dailyDataChartDataset = MutableLiveData<ArrayList<ILineDataSet>>()
@@ -55,7 +56,8 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
 //                    Log.i(TAG,"${data.xHat1.asList()}")
 //                    Log.i(TAG,"${data.xHat2.asList()}")
                     val elapsed = measureTimeMillis {
-                    val avgPhase = mObserverBasedFilter.estimateAverageDailyPhase(data.xHat1, data.xHat2)
+//                    val avgPhase = mObserverBasedFilter.estimateAverageDailyPhase(data.xHat1, data.xHat2)
+                    val avgPhase = mSSKF.estimateAverageDailyPhase(data.xHat1, data.xHat2)
                     withContext(Dispatchers.Main){
                         _dailyDataChartDataset.value = createChartDataset(data.y, data.yHat)
                         if (avgPhase != null){

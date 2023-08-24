@@ -27,6 +27,7 @@ class Orchestrator(
     private val mAuthStateManager: AuthStateManager = AuthStateManager.getInstance(mContext)
     private val mConfiguration: Configuration = Configuration.getInstance(mContext)
     private val mOBF: ObserverBasedFilter = ObserverBasedFilter()
+    private val mSSKF: SteadyStateKalmanFilter = SteadyStateKalmanFilter()
     private val mUserDataManager: UserDataManager = UserDataManager(mContext)
 
     /**
@@ -60,8 +61,10 @@ class Orchestrator(
 //            Log.i(TAG, "Received y: ${newData!![1].asList()}")
 
             // Optimize the filter on the new data, then simulate dynamics with the optimal filter
-            val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-            val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+//            val L = mOBF.optimizeFilter(newData!![0], newData!![1])
+//            val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+            val params = mSSKF.optimizeFilter(newData!![0], newData!![1])
+            val filterOutput = mSSKF.simulateDynamics(newData!![0], newData!![1], params!!)!!
             val yHat = filterOutput.last()
             val xHat1 = filterOutput[0]
             val xHat2 = filterOutput[1]
@@ -73,7 +76,8 @@ class Orchestrator(
                 xHat1,
                 xHat2,
                 yesterdayString,
-                L!!,
+//                L!!,
+                params!!,
                 todayString
             )
         }
@@ -88,8 +92,9 @@ class Orchestrator(
             // If gains are fresh, finishUp
             if (filterData.gainsTimestamp > weekAgoString) {
                 Log.i(TAG, "Fresh gains, finishing up")
-                val filterOutput =
-                    mOBF.simulateDynamics(newData!![0], newData!![1], filterData.gains)!!
+//                val filterOutput =
+//                    mOBF.simulateDynamics(newData!![0], newData!![1], filterData.gains)!!
+                val filterOutput = mSSKF.simulateDynamics(newData!![0], newData!![1], filterData.gains)!!
                 val yHat = filterOutput.last()
                 val xHat1 = filterOutput[0]
                 val xHat2 = filterOutput[1]
@@ -105,8 +110,10 @@ class Orchestrator(
                 )
             } else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
-                val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-                val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+//                val L = mOBF.optimizeFilter(newData!![0], newData!![1])
+//                val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+                val params = mSSKF.optimizeFilter(newData!![0], newData!![1])
+                val filterOutput = mSSKF.simulateDynamics(newData!![0], newData!![1], params!!)!!
                 val yHat = filterOutput.last()
                 val xHat1 = filterOutput[0]
                 val xHat2 = filterOutput[1]
@@ -117,7 +124,8 @@ class Orchestrator(
                     xHat1,
                     xHat2,
                     yesterdayString,
-                    L!!,
+//                    L!!,
+                    params!!,
                     todayString
                 )
             }
@@ -141,8 +149,10 @@ class Orchestrator(
                 )
             } else {
                 Log.i(TAG, "Stale gains, optimizing filter first")
-                val L = mOBF.optimizeFilter(filterData.t, filterData.y)
-                val filterOutput = mOBF.simulateDynamics(filterData.t, filterData.y, L!!)!!
+//                val L = mOBF.optimizeFilter(filterData.t, filterData.y)
+//                val filterOutput = mOBF.simulateDynamics(filterData.t, filterData.y, L!!)!!
+                val params = mSSKF.optimizeFilter(filterData.t, filterData.y)
+                val filterOutput = mSSKF.simulateDynamics(filterData.t, filterData.y, params!!)!!
                 val yHat = filterOutput.last()
                 val xHat1 = filterOutput[0]
                 val xHat2 = filterOutput[1]
@@ -153,7 +163,8 @@ class Orchestrator(
                     xHat1,
                     xHat2,
                     filterData.dataTimestamp,
-                    L!!,
+//                    L!!,
+                    params!!,
                     todayString
                 )
             }
