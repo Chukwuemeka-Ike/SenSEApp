@@ -119,3 +119,5 @@ venv.bak/
 .cxx
 local.properties
 /app/src/main/res/raw/auth_config.json
+
+scratch.*
