@@ -1,9 +1,17 @@
-import numpy as np
+'''
+Rensselaer Polytechnic Institute - Julius Lab
+SenSE Project
+Author - Chukwuemeka Osaretin Ike
+
+Description:
+'''
+import itertools
 import json
+import numpy as np
+import time
+
 from ObserverBasedFilter import ObserverBasedFilter
 from datetime import datetime, timedelta
-import time
-import itertools
 
 # s = '{"id":01, "name": "Emily", "language": ["C++", "Python"]}'
 data_key = 'activities-heart-intraday'
@@ -66,13 +74,13 @@ def simulateDynamics(t: np.ndarray, y: np.ndarray, L: np.ndarray) -> np.ndarray:
 
 
 def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
-    '''
-        Parses the input data for the time and value vectors, then optimizes 
-        the filter and returns the best gain vector
-        Parameters:
-            inputData (str) -
-        Returns: 
-            L (np.ndarray) - optimal gain matrix to use in simulating
+    '''Parses the input data for the time and value vectors, then optimizes
+        the filter and returns the best gain vector.
+
+    Parameters:
+        inputData (str) -
+    Returns: 
+        L (np.ndarray) - optimal gain matrix to use in simulating
     '''
     # # Get time and value vectors
     # t, y = parseUserData(inputData)

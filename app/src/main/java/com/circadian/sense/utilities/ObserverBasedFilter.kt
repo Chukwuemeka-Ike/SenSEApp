@@ -8,7 +8,7 @@ import com.circadian.sense.NUM_DAYS
 import com.circadian.sense.NUM_DAYS_OFFSET
 
 /**
- * ObserverBasedFilter class to organize the filter's two main functionalities
+ * ObserverBasedFilter class to organize the filter's functionalities.
  */
 class ObserverBasedFilter {
     /**
