@@ -20,7 +20,7 @@ INT_MAX = 2147483647
 class SteadyStateKalmanFilter:
     '''Steady-State Kalman Filter class for running and optimizing the SSKF.
 
-    It returns filter outputs and optimized gains as needed in the Kotlin code.
+    It returns filter outputs and optimized params as needed in the Kotlin code.
     '''
     # Filter parameters.
     _omg = 2*np.pi/24

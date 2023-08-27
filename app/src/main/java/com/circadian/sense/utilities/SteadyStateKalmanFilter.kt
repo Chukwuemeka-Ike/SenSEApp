@@ -42,7 +42,7 @@ class SteadyStateKalmanFilter {
     }
 
     /**
-     * Calls the python function that optimizes the filter's gains and
+     * Calls the python function that optimizes the filter's params and
      * returns the optimalParams as a FloatArray
      * @param [t] - times array
      * @param [y] - raw data array

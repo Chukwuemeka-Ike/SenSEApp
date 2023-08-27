@@ -6,11 +6,10 @@ Author - Chukwuemeka Osaretin Ike
 Description:
 '''
 import numpy as np
-import FilterUtils
-
-from datetime import datetime, timedelta
-from SteadyStateKalmanFilter import SteadyStateKalmanFilter
 from scipy.linalg import solve_discrete_are
+
+import FilterUtils
+from SteadyStateKalmanFilter import SteadyStateKalmanFilter
 
 
 def simulateDynamics(t: np.ndarray, y: np.ndarray, filterParams: np.ndarray) -> np.ndarray:
@@ -20,21 +19,29 @@ def simulateDynamics(t: np.ndarray, y: np.ndarray, filterParams: np.ndarray) -> 
         y:
         filterParams:
             Q: [0, :-1] - state covariance matrix.
-            R: [0, -1] - output covariance value.
+            R: [0, -1] - output covariance value. Last value in the list.
     Returns:
         filterOutput(np.ndarray) - contains [xHat; yHat]:
                 xHat (np.ndarray) - filter states.
                 yHat (np.ndarray) - filter output.
     '''
     SSKF = SteadyStateKalmanFilter()
+    print(type(t))
+    print(type(y))
+    print(type(filterParams))
 
     # Create the state space system.
     A, B, C, D = SSKF.createStateSpace(t)
 
-    # Reshape Q as a matrix, then multiply by its transpose to give symmetry.
-    Q = np.reshape(filterParams[0, :-1], (SSKF._stateLength, -1))
+    # Convert params to an np array and extract Q and R.
+    filterParams = np.array(filterParams)
+
+    # Reshape Q as a matrix, then multiply by its transpose
+    # to make it symmetric.
+    Q = np.reshape(filterParams[:-1], (SSKF._stateLength, -1))
     Q = np.matmul(Q, Q.T)
-    R = filterParams[0, -1]
+
+    R = filterParams[-1].reshape((1,1))
 
     P = solve_discrete_are(A.T, C.T, Q, R)
     L = np.dot(A, np.dot(P, C.T))/(np.dot(C, np.dot(P, C.T)) + R)
@@ -51,6 +58,8 @@ def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
         filterParams: vector containing optimal Q and R values.
     '''
     SSKF = SteadyStateKalmanFilter()
+    print(type(t))
+    print(type(y))
 
     return SSKF.optimizeFilter(t, y)
 
@@ -69,7 +78,8 @@ def estimateAverageDailyPhase(
     xHat2 = xHat2[:, numDaysOffset*numDataPointsPerDay:]
 
     averageDailyPhase = FilterUtils.estimateAverageDailyPhase(
-        xHat1, xHat2, numDays-numDaysOffset, numDataPointsPerDay
+        xHat1, xHat2, numDays-numDaysOffset, numDataPointsPerDay,
+        SteadyStateKalmanFilter()._omg
     )
 
     idx = np.argsort(averageDailyPhase)

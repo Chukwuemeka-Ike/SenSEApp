@@ -82,13 +82,9 @@ def optimizeFilter(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     Returns: 
         L (np.ndarray) - optimal gain matrix to use in simulating
     '''
-    # # Get time and value vectors
-    # t, y = parseUserData(inputData)
-
     # Optimize the filter and return the optimal gains
     # np.array(t),np.array(y)
     return ObserverBasedFilter().optimizeFilter(t, y)
-
 
 def estimateAverageDailyPhase(xHat1In: np.ndarray, xHat2In: np.ndarray, numDays: int,
                               numDaysOffset: int, numDataPointsPerDay: int) -> np.ndarray:
@@ -99,19 +95,14 @@ def estimateAverageDailyPhase(xHat1In: np.ndarray, xHat2In: np.ndarray, numDays:
     '''
     xHat1 = np.array(xHat1In).reshape([1, numDays * numDataPointsPerDay])
     xHat2 = np.array(xHat2In).reshape([1, numDays * numDataPointsPerDay])
-    # print(xHat1.shape)
     xHat1 = xHat1[:, numDaysOffset*numDataPointsPerDay:]
     xHat2 = xHat2[:, numDaysOffset*numDataPointsPerDay:]
-    # print(xHat1.shape)
+
     averageDailyPhase = ObserverBasedFilter().estimateAverageDailyPhase(xHat1, xHat2, numDays-numDaysOffset,
                                                                         numDataPointsPerDay)
-    # print(averageDailyPhase.shape)
-    # print(averageDailyPhase)
-    # averageDailyPhase = averageDailyPhase[:, numDaysOffset:]
-    # print(averageDailyPhase)
+
     idx = np.argsort(averageDailyPhase)
     return np.append(averageDailyPhase, idx, axis=0)
-
 
 def parseUserData(inputData: str) -> np.ndarray:
     '''

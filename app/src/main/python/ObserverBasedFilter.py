@@ -25,7 +25,7 @@ class ObserverBasedFilter:
         Think of this class as a single place we can change simulation and 
         optimization parameters. 
         
-        It returns filter outputs and optimized gains as needed in the 
+        It returns filter outputs and optimized params as needed in the
         Kotlin class.
     '''
     # Filter parameters
@@ -50,7 +50,7 @@ class ObserverBasedFilter:
     _lambda = 50
     _max_iterations = 25
 
-    # Bounds on the filter gains used for optimization
+    # Bounds on the filter params used for optimization
     _LB = -5
     _lStart = 0
     _rEnd = 8

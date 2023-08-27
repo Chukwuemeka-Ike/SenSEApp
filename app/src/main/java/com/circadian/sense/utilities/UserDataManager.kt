@@ -43,7 +43,7 @@ class UserDataManager(private val context: Context) {
 
     /**
      * Loads the filter data from app-specific storage. Returns null if there's nothing saved
-     * @return DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, gains, gainsTimestamp)
+     * @return DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, params, paramsTimestamp)
      */
     fun loadUserData(): DataPack? {
         return try {
@@ -70,13 +70,13 @@ class UserDataManager(private val context: Context) {
             val xHatJSON = jsonData.getJSONArray(xHatKey)
             val xHat1JSON = xHatJSON.getJSONArray(0)
             val xHat2JSON = xHatJSON.getJSONArray(1)
-            val gainsJSON = jsonData.getJSONArray(gainsKey)
+            val paramsJSON = jsonData.getJSONArray(paramsKey)
             val dataTimestamp = jsonData.getString(dataTimestampKey)
-            val gainsTimestamp = jsonData.getString(gainsTimestampKey)
+            val paramsTimestamp = jsonData.getString(paramsTimestampKey)
             val dataLength = tJSON.length()
-            val gainsLength = gainsJSON.length()
+            val paramsLength = paramsJSON.length()
 
-            // Create arrays for t, y, yHat, and the gains
+            // Create arrays for t, y, yHat, and the params
             val t = FloatArray(dataLength)
             val y = FloatArray(dataLength)
             val yHat = FloatArray(dataLength)
@@ -91,13 +91,14 @@ class UserDataManager(private val context: Context) {
                 xHat2[i] = xHat2JSON.getDouble(i).toFloat()
             }
 
-            val gains = FloatArray(gainsLength)
-            for (i in 0 until gainsLength) {
-                gains[i] = gainsJSON.getDouble(i).toFloat()
+
+            val params = FloatArray(paramsLength)
+            for (i in 0 until paramsLength) {
+                params[i] = paramsJSON.getDouble(i).toFloat()
             }
 
             Log.i(TAG, "Successfully loaded data")
-            DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, gains, gainsTimestamp)
+            DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, params, paramsTimestamp)
         } catch (exception: IOException) {
             Log.e(TAG, exception.message ?: "IOException")
             null
@@ -119,17 +120,17 @@ class UserDataManager(private val context: Context) {
             val xHat1JSON = JSONArray(data.xHat1)
             val xHat2JSON = JSONArray(data.xHat2)
             val xHatJSON = JSONArray(listOf(xHat1JSON,xHat2JSON))
-            val gainsArray = JSONArray(data.gains)
+            val paramsArray = JSONArray(data.filterParams)
             val dataTimestamp = data.dataTimestamp
-            val gainsTimestamp = data.gainsTimestamp
+            val paramsTimestamp = data.filterParamsTimestamp
             val outputString = """{
                 |${timeKey}:${tArray}, 
                 |${yKey}:${yArray}, 
                 |${yHatKey}:${yHatArray},
                 |${xHatKey}:${xHatJSON},
-                |${gainsKey}:${gainsArray},
+                |${paramsKey}:${paramsArray},
                 |${dataTimestampKey}: ${dataTimestamp},
-                |${gainsTimestampKey}: ${gainsTimestamp}
+                |${paramsTimestampKey}: ${paramsTimestamp}
             }""".trimMargin()
 
             // Overwriting wasn't working, so manually deleting the value first
@@ -348,8 +349,8 @@ class UserDataManager(private val context: Context) {
         private const val yHatKey = "yHat"
         private const val xHatKey = "xHat"
         private const val dataTimestampKey = "dataTimestamp"
-        private const val gainsKey = "L"
-        private const val gainsTimestampKey = "gainsTimestamp"
+        private const val paramsKey = "L"
+        private const val paramsTimestampKey = "paramsTimestamp"
         private const val mActivitiesIntradayKey = "activities-heart-intraday"
         private const val mDatasetKey = "dataset"
         private const val TAG = "DataManager"

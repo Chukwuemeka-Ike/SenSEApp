@@ -41,7 +41,7 @@ class ObserverBasedFilter {
     }
 
     /**
-     * Calls the python function that optimizes the filter's gains and
+     * Calls the python function that optimizes the filter's params and
      * returns the optimalGains as a FloatArray
      * @param [t] - times array
      * @param [y] - raw data array
@@ -118,7 +118,7 @@ class ObserverBasedFilter {
         private const val SIMULATE_DYNAMICS_KEY = "simulateDynamics"
         private const val OPTIMIZE_FILTER_KEY = "optimizeFilter"
         private const val ESTIMATE_AVG_DAILY_PHASE_KEY = "estimateAverageDailyPhase"
-        private const val PYTHON_MAIN_KEY = "main"
+        private const val PYTHON_MAIN_KEY = "main_obf"
     }
 
 }
