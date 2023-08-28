@@ -17,25 +17,26 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Device architectures to package with the API
+        // Device architectures to package with the APK.
         ndk {
-            abiFilters "armeabi-v7a", "arm64-v8a", "x86"
+            abiFilters "armeabi-v7a", "arm64-v8a"
         }
 //        "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
 
-        // Python packages needed for the python parts of the functionality
+        // Python dependencies for the filters.
         python {
+            version "3.8"
             pip {
                 install "scipy"
                 install "numpy"
             }
         }
-
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
