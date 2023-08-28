@@ -7,7 +7,7 @@ Description:
 '''
 import itertools
 import numpy as np
-import FilterUtils
+import filter_utils
 
 from scipy import signal
 from scipy.linalg import solve_discrete_are
@@ -146,7 +146,7 @@ class SteadyStateKalmanFilter:
         # print(combinations.shape)
 
         # Compute the original spectrum for calculating costs of filter outputs.
-        originalSpectrum, f, _ = FilterUtils.computeSpectrum(time, y)
+        originalSpectrum, f, _ = filter_utils.computeSpectrum(time, y)
 
         A, B, C, D = self.createStateSpace(time)
 
@@ -171,8 +171,8 @@ class SteadyStateKalmanFilter:
             yHat = out[-1, :]
 
             # Compute the spectrum and corresponding cost.
-            filteredSpectrum, _, _ = FilterUtils.computeSpectrum(time, yHat)
-            Cost[member] = FilterUtils.computeCost(originalSpectrum, filteredSpectrum, f, self._order)
+            filteredSpectrum, _, _ = filter_utils.computeSpectrum(time, yHat)
+            Cost[member] = filter_utils.computeCost(originalSpectrum, filteredSpectrum, f, self._order)
         
         # Run the optimization for _max_iterations.
         for iteration in range(self._max_iterations):
@@ -200,8 +200,8 @@ class SteadyStateKalmanFilter:
                 yHat = out[-1, :]
 
                 # Compute the spectrum and corresponding cost.
-                filteredSpectrum, _, _ = FilterUtils.computeSpectrum(time, yHat)
-                newCost[j] = FilterUtils.computeCost(originalSpectrum, filteredSpectrum, f, self._order)
+                filteredSpectrum, _, _ = filter_utils.computeSpectrum(time, yHat)
+                newCost[j] = filter_utils.computeCost(originalSpectrum, filteredSpectrum, f, self._order)
             
             # Append the newGen and newCost to allow us work on one array each.
             Q_pop = np.append(Q_pop, newQGen, axis=0)

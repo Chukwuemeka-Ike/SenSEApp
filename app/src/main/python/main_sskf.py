@@ -8,7 +8,7 @@ Description:
 import numpy as np
 from scipy.linalg import solve_discrete_are
 
-import FilterUtils
+import filter_utils
 from SteadyStateKalmanFilter import SteadyStateKalmanFilter
 
 
@@ -77,7 +77,7 @@ def estimateAverageDailyPhase(
     xHat1 = xHat1[:, numDaysOffset*numDataPointsPerDay:]
     xHat2 = xHat2[:, numDaysOffset*numDataPointsPerDay:]
 
-    averageDailyPhase = FilterUtils.estimateAverageDailyPhase(
+    averageDailyPhase = filter_utils.estimateAverageDailyPhase(
         xHat1, xHat2, numDays-numDaysOffset, numDataPointsPerDay,
         SteadyStateKalmanFilter()._omg
     )
