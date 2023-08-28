@@ -1,5 +1,5 @@
 # SenSE App
-SenSE is an Android application developed by the [Julius Lab](https://sites.ecse.rpi.edu/~agung/) in the Department of Electrical, Computer, and Systems Engineering at the [Rensselaer Polytechnic Institute](https://rpi.edu/). 
+SenSE is an Android application developed by the [Julius Lab](https://julius-lab-rpi.github.io/) in the Department of Electrical, Computer, and Systems Engineering at the [Rensselaer Polytechnic Institute](https://rpi.edu/). 
 
 The app implements an algorithm developed by the Lab to estimate users' circadian phase shifts using biometric data. In its current state, the filter processes heart rate data and extracts the underlying circadian signal, which can be used in subsequent control attempts.
 
