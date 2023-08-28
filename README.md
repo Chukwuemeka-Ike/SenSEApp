@@ -65,8 +65,8 @@ If you find the work done in either article useful, please cite accordingly.
   publisher={Elsevier}
 }
 ```
-```
 
+```bibtex
 @article{ikeefficient,
   title={Efficient Estimation of the Human Circadian Phase via Kalman Filtering},
   author={Ike, Chukwuemeka O and Wen, John T and Oishi, Meeko MK and Brown, Lee K and Julius, A Agung}
