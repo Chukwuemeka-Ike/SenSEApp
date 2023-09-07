@@ -1,5 +1,6 @@
 package com.circadian.sense.ui.settings
 
+import android.content.ActivityNotFoundException
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
@@ -19,21 +20,35 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_LIGHT
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.circadian.sense.*
+import com.circadian.sense.DAILY_OPTIMIZATION_WORKER_TAG
+import com.circadian.sense.MainActivity
 import com.circadian.sense.R
+import com.circadian.sense.WORK_MANAGER_CONSTRAINTS
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
 import com.circadian.sense.utilities.DailyOptimizationWorker
 import com.circadian.sense.utilities.UserDataManager
-import kotlinx.coroutines.*
-import net.openid.appauth.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import net.openid.appauth.AppAuthConfiguration
+import net.openid.appauth.AuthState
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.AuthorizationRequest
+import net.openid.appauth.AuthorizationResponse
+import net.openid.appauth.AuthorizationService
+import net.openid.appauth.AuthorizationServiceConfiguration
+import net.openid.appauth.ClientAuthentication
+import net.openid.appauth.ResponseTypeValues
+import net.openid.appauth.TokenRequest
+import net.openid.appauth.TokenResponse
 import org.json.JSONException
 import java.io.IOException
-import java.lang.Runnable
 import java.net.HttpURLConnection
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
@@ -55,27 +70,27 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private val mAuthIntent = AtomicReference<CustomTabsIntent>()
     private var mAuthIntentLatch = CountDownLatch(1)
 
-    private var loginPreference: Preference? = null
-    private var logoutPreference: Preference? = null
+    private var loginButton: Preference? = null
+    private var logoutButton: Preference? = null
+    private var feedbackButton: Preference? = null
 
     /**
      *   Registers for an activity result when we launch the CustomTabsIntent
-     *   for user to sign in, then continues the authorization based on result
+     *   for user to sign in, then continues the authorization based on result.
      */
     private val startCustomTabsForResult = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
 
-        // If successful, continue authorization with the returned data
+        // If successful, continue authorization with the returned data.
         if (result.resultCode == AppCompatActivity.RESULT_OK) {
             val authorizationExchangeResponse = result.data
             val mainIntent = Intent(
                 requireContext().applicationContext, MainActivity::class.java
-            )
-                .putExtras(authorizationExchangeResponse!!)
+            ).putExtras(authorizationExchangeResponse!!)
             continueAuth(mainIntent)
-            loginPreference?.isEnabled = false
-            logoutPreference?.isEnabled = true
+            loginButton?.isEnabled = false
+            logoutButton?.isEnabled = true
 
             Log.i(TAG, "Received auth code from server. Continuing authentication.")
         } else {
@@ -98,7 +113,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         savedInstanceState: Bundle?
     ): View {
 
-        // AuthStateManager, Executor, Configuration, AuthService
+        // AuthStateManager, Executor, Configuration, AuthService.
         mAuthStateManager = AuthStateManager.getInstance(requireContext().applicationContext)
         mExecutor = Executors.newSingleThreadExecutor()
         mConfiguration = Configuration.getInstance(requireContext().applicationContext)
@@ -109,44 +124,49 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 .build()
         )
 
-        // Login and Logout preferences
-        loginPreference = findPreference(getString(R.string.login_pref_tag))
-        logoutPreference = findPreference(getString(R.string.logout_pref_tag))
+        // Login and Logout buttons.
+        loginButton = findPreference(getString(R.string.login_pref_tag))
+        logoutButton = findPreference(getString(R.string.logout_pref_tag))
 
-        // If we're authorized, disable loginPreference and enable logoutPreference - and vice versa
+        // If we're authorized, disable loginButton and enable logoutButton - and vice versa
         with(mAuthStateManager.current.isAuthorized) {
-            loginPreference?.isEnabled = !this
-            logoutPreference?.isEnabled = this
+            loginButton?.isEnabled = !this
+            logoutButton?.isEnabled = this
         }
 
-        // Starts authorization workflow when login is clicked
-        loginPreference?.setOnPreferenceClickListener {
+        // Starts authorization workflow when login is clicked.
+        loginButton?.setOnPreferenceClickListener {
             startAuth()
             true
         }
 
-        // Logs the user out when clicked
-        logoutPreference?.setOnPreferenceClickListener {
+        // Logs the user out when clicked.
+        logoutButton?.setOnPreferenceClickListener {
             createLogOutDialog()
             true
         }
 
-        val feedBack: Preference? = findPreference(getString(R.string.feedback_pref_tag))
-        feedBack?.isEnabled = false
+        // Feedback button. Opens a draft email with the app feedback email and a subject.
+        feedbackButton = findPreference(getString(R.string.feedback_pref_tag))
+        feedbackButton?.isEnabled = true
+        feedbackButton?.setOnPreferenceClickListener {
+            createFeedbackEmail()
+            true
+        }
         val notifications: Preference? = findPreference(getString(R.string.notifications_pref_tag))
         notifications?.isEnabled = false
 
-        // Start warming up the browser and auth process if not authorized
+        // Start warming up the browser and auth process if not authorized.
         if (!mAuthStateManager.current.isAuthorized) {
             mExecutor.submit(Runnable { this.initializeAppAuth() })
         }
 
-        // If invalid configuration, scream
+        // If invalid configuration, display an error.
         if (!mConfiguration.isValid) {
             displayError(mConfiguration.getConfigurationError()!!)
         }
 
-        // Discard any existing authorization state due to the change of configuration
+        // Discard any existing authorization state due to the change of configuration.
         // TODO: SECURITY CHECK. Someone shouldn't be able to just
         //  add something in and we accept it
         if (mConfiguration.hasConfigurationChanged()) {
@@ -157,6 +177,28 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         return super.onCreateView(inflater, container, savedInstanceState)
+    }
+
+    fun createFeedbackEmail() {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            // The intent does not have a URI, so declare the "text/plain" MIME type.
+            type = "text/plain"
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(getString(R.string.feedback_email_address))) // recipients.
+            putExtra(Intent.EXTRA_SUBJECT, getString(R.string.feedback_email_subject))
+            putExtra(Intent.EXTRA_TEXT, getString(R.string.feedback_email_preamble))
+        }
+        try {
+            startActivity(intent)
+        }
+        catch (e: ActivityNotFoundException) {
+            // Define what your app should do if no activity can handle the intent.
+            // Let the user know there's no app for sending the email.
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.feedback_error),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     override fun onDestroy() {
@@ -535,8 +577,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
                             Toast.LENGTH_SHORT
                         ).show()
 
-                        loginPreference?.isEnabled = true
-                        logoutPreference?.isEnabled = false
+                        loginButton?.isEnabled = true
+                        logoutButton?.isEnabled = false
                     }
                 } else {
                     Log.w(TAG, "Problem with revoke attempt: ${responseCode}")

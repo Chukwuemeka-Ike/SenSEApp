@@ -68,6 +68,11 @@
     <string name="logout_dialog_negative">No</string>
     <string name="logout_successful">Logged out successfully</string>
     <string name="feedback_pref_tag">feedback</string>
+    <string name="feedback_button_description">Report technical issues or suggest new features</string>
+    <string name="feedback_email_address">sense.rpi.app@gmail.com</string>
+    <string name="feedback_email_subject">SenSE App User Feedback</string>
+    <string name="feedback_email_preamble">SenSE App User Feedback\n---------------------------------------------\n\n</string>
+    <string name="feedback_error">There is no email app available.</string>
     <string name="notifications_pref_tag">notifications</string>
     <string name="no_auth_state_retained_exception">No authorization state retained - reauthorization required</string>
     <string name="cancelled_logout_dialog">Logout cancelled</string>

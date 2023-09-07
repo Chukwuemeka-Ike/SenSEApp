@@ -19,13 +19,13 @@
     <PreferenceCategory
         app:key="misc_category"
         app:title="Miscellaneous">
-        <SwitchPreferenceCompat
-            app:key="@string/notifications_pref_tag"
-            android:iconSpaceReserved="true"
-            app:title="Enable app notifications"/>
+<!--        <SwitchPreferenceCompat-->
+<!--            app:key="@string/notifications_pref_tag"-->
+<!--            android:iconSpaceReserved="true"-->
+<!--            app:title="Enable app notifications"/>-->
         <Preference
             app:key="@string/feedback_pref_tag"
             app:title="Send feedback"
-            app:summary="Report technical issues or suggest new features"/>
+            app:summary="@string/feedback_button_description"/>
     </PreferenceCategory>
 </PreferenceScreen>
