@@ -417,7 +417,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
             OneTimeWorkRequestBuilder<DailyOptimizationWorker>()
                 .setConstraints(WORK_MANAGER_CONSTRAINTS)
                 .addTag(DAILY_OPTIMIZATION_WORKER_TAG)
-                .setInputData(workDataOf(Pair(getString(R.string.initial_optimization_input_data), "true")))
+                .setInputData(workDataOf(Pair(
+                    getString(R.string.initial_optimization_input_data),
+                    "true"
+                )))
                 .build()
         WorkManager.getInstance(requireContext().applicationContext)
             .enqueue(
