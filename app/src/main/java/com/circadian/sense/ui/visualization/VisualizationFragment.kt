@@ -4,34 +4,31 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
-import android.text.method.ScrollingMovementMethod
 import android.util.Log
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.Animation
 import android.widget.CheckBox
-import android.widget.PopupWindow
-import android.widget.TextView
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.circadian.sense.DAILY_OPTIMIZATION_WORKER_TAG
-import com.circadian.sense.R
+import com.circadian.sense.*
 import com.circadian.sense.databinding.FragmentVisualizationBinding
 import com.circadian.sense.utilities.AuthStateManager
 import com.circadian.sense.utilities.Configuration
+import com.github.mikephil.charting.charts.BubbleChart
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.AxisBase
+import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.*
 import java.util.concurrent.TimeUnit
 import android.content.res.Configuration as resConfiguration
@@ -50,7 +47,8 @@ class VisualizationFragment : Fragment() {
     private lateinit var mAuthStateManager: AuthStateManager
     private lateinit var mConfiguration: Configuration
 
-    private lateinit var mVizChart: LineChart
+    private lateinit var mDailyDataChart: LineChart
+    private lateinit var mAveragePhaseChart: BubbleChart
     private lateinit var mChartDataSets: ArrayList<ILineDataSet>
 
     override fun onCreateView(
@@ -82,14 +80,14 @@ class VisualizationFragment : Fragment() {
 //        val optimizeButton = binding.optimizeButton     // Optimize button
 //        optimizeButton.setOnClickListener {
 //            mVizChart.setNoDataText("") // Empty string
-//            loadingContainer.visibility = View.VISIBLE
 //            vizViewModel.runWorkflow()  //
 //        }
 
         val loadingContainer = binding.loadingContainer     // Loading container with progress bar
-        loadingContainer.visibility = View.GONE
+//        loadingContainer.visibility = View.VISIBLE
 
-        mVizChart = binding.visualizationChart           // The chart for data visualization
+        mDailyDataChart = binding.dailyDataChart           // The chart for data visualization
+        mAveragePhaseChart = binding.averagePhaseChart
 
         if (mAuthStateManager.current.isAuthorized && !mConfiguration.hasConfigurationChanged()) {
             displayAuthorized()
@@ -119,22 +117,30 @@ class VisualizationFragment : Fragment() {
 
 //        binding.vizExpositionButton.setOnClickListener { showPopupWindow(it, container) }
 
-        // Listen for WorkManager. If it's succeeded and mVizChart hasn't been populated, createChartDataset
-        WorkManager.getInstance(requireContext()).getWorkInfosByTagLiveData(DAILY_OPTIMIZATION_WORKER_TAG)
+        // Listen for WorkManager. If it's succeeded or enqueued and mVizChart hasn't been populated, createChartDataset
+        WorkManager.getInstance(requireContext())
+            .getWorkInfosByTagLiveData(DAILY_OPTIMIZATION_WORKER_TAG)
             .observe(viewLifecycleOwner) { workInfos ->
-                if (workInfos.isNotEmpty() && mVizChart.data == null && workInfos[0] != null){
-                    if (workInfos[0].state == WorkInfo.State.SUCCEEDED) {
-                        Log.i(TAG,"Work Infos not empty, and successful work state, so creating chart dataset")
+                if (workInfos.isNotEmpty() && mDailyDataChart.data == null && workInfos.last() != null) {
+                    Log.i(TAG, "Last work info: ${workInfos.last()}")
+                    Log.i(TAG, "Last work info: ${workInfos.last().state}")
+                    Log.i(TAG, "Work infos: ${workInfos.size}")
+                    if ((workInfos.last().state == WorkInfo.State.ENQUEUED) || (workInfos.last().state == WorkInfo.State.SUCCEEDED)) {
+                        Log.i(
+                            TAG,
+                            "Work in successful or enqueued state, so attempting to create chart dataset"
+                        )
                         vizViewModel.createChartDataset()
-                        loadingContainer.visibility = View.GONE
-                    } else {
+                        loadingContainer.visibility = View.VISIBLE
+                    } else if (workInfos.last().state == WorkInfo.State.RUNNING) {
+                        Log.i(TAG, "Work currently running")
                         loadingContainer.visibility = View.VISIBLE
                     }
                 }
             }
 
         // Observe the LiveData we need for mVizChart
-        vizViewModel.chartData.observe(viewLifecycleOwner) {
+        vizViewModel.dailyDataChartDataset.observe(viewLifecycleOwner) {
             // Hide the loading container
             loadingContainer.visibility = View.GONE
 
@@ -149,8 +155,15 @@ class VisualizationFragment : Fragment() {
 
             // Populate mChartDataSets with the liveDataset and draw mVizChart
             mChartDataSets = it
-            mVizChart.data = LineData(mChartDataSets)
-            mVizChart.invalidate()
+            mDailyDataChart.data = LineData(mChartDataSets)
+            mDailyDataChart.invalidate()
+
+        }
+
+        vizViewModel.averagePhaseDataset.observe(viewLifecycleOwner) {
+            loadingContainer.visibility = View.GONE
+            mAveragePhaseChart.data = it
+            mAveragePhaseChart.invalidate()
         }
 
         return root
@@ -159,27 +172,6 @@ class VisualizationFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    private fun showPopupWindow(v: View, container: ViewGroup?) {
-        val popupWindow = PopupWindow()
-
-//        when (v.id){
-//            R.id.viz_exposition_button -> {
-//                popupWindow.contentView = layoutInflater.inflate(R.layout.popup_visualization_exposition, container, false)
-//            }
-//        }
-
-        popupWindow.width = ConstraintLayout.LayoutParams.MATCH_PARENT
-        popupWindow.height = ConstraintLayout.LayoutParams.WRAP_CONTENT
-        popupWindow.isFocusable = true
-        popupWindow.isTouchable = true
-        popupWindow.isOutsideTouchable = true
-//            popupWindow.enterTransition
-        popupWindow.animationStyle = Animation.INFINITE
-//        popupWindow.setBackgroundDrawable()
-        popupWindow.showAtLocation(v.rootView, Gravity.CENTER, 0, 0)
-//        popupWindow.showAsDropDown(v.rootView, 0, 0, Gravity.CENTER_VERTICAL)
     }
 
     /**
@@ -203,33 +195,33 @@ class VisualizationFragment : Fragment() {
      * Creates the visualization chart and sets all its default values before the plots are made
      */
     private fun createVisualizationChart() {
-        mVizChart.description.isEnabled = false
-        mVizChart.setDrawGridBackground(false)
-        mVizChart.isDragEnabled = true
-        mVizChart.setScaleEnabled(true)
-        mVizChart.setPinchZoom(false)
-        mVizChart.animateXY(200, 200)
-        mVizChart.axisRight.isEnabled = false
-        mVizChart.setDrawMarkers(false)
+        // DailyDataChart setup
+        mDailyDataChart.description.isEnabled = false
+        mDailyDataChart.setDrawGridBackground(false)
+        mDailyDataChart.isDragEnabled = true
+        mDailyDataChart.setScaleEnabled(true)
+        mDailyDataChart.setPinchZoom(false)
+        mDailyDataChart.animateXY(200, 200)
+        mDailyDataChart.axisRight.isEnabled = false
+        mDailyDataChart.setDrawMarkers(false)
 
         val tf = Typeface.SANS_SERIF
-        mVizChart.legend.typeface = tf
+        mDailyDataChart.legend.typeface = tf
 
-        val leftAxis = mVizChart.axisLeft
-        leftAxis.typeface = tf
-        leftAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART)
-        leftAxis.spaceTop = 20f
+        mDailyDataChart.axisLeft.typeface = tf
+        mDailyDataChart.axisLeft.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART)
+        mDailyDataChart.axisLeft.spaceTop = 20f
 
-        val xAxis = mVizChart.xAxis
-        xAxis.isEnabled = true
-        xAxis.typeface = tf
-        xAxis.setLabelCount(3, false)
-        xAxis.granularity = 1440 / 48f
-        xAxis.setCenterAxisLabels(false)
+        mDailyDataChart.xAxis.isEnabled = true
+        mDailyDataChart.xAxis.typeface = tf
+        mDailyDataChart.xAxis.setLabelCount(3, true)
+        mDailyDataChart.xAxis.granularity = NUM_DATA_POINTS_PER_DAY / 24f
+        mDailyDataChart.xAxis.setCenterAxisLabels(false)
+        mDailyDataChart.xAxis.setDrawLimitLinesBehindData(true)
 
         // Convert the x-axis millis values to string timestamps
-        xAxis.position = XAxis.XAxisPosition.TOP_INSIDE
-        xAxis.valueFormatter = object : ValueFormatter() {
+        mDailyDataChart.xAxis.position = XAxis.XAxisPosition.TOP_INSIDE
+        mDailyDataChart.xAxis.valueFormatter = object : ValueFormatter() {
             private val mFormat = SimpleDateFormat("MMM dd HH:mm", Locale.ENGLISH)
             override fun getAxisLabel(value: Float, axis: AxisBase?): String {
                 val millis: Long = TimeUnit.MINUTES.toMillis(value.toLong())
@@ -237,19 +229,79 @@ class VisualizationFragment : Fragment() {
             }
         }
 
-        // Color the chart according to user theme
+        // AveragePhaseChart setup
+        mAveragePhaseChart.description.isEnabled = false
+        mAveragePhaseChart.setDrawGridBackground(false)
+        mAveragePhaseChart.isDragEnabled = true
+        mAveragePhaseChart.setScaleEnabled(false)
+        mAveragePhaseChart.setPinchZoom(false)
+        mAveragePhaseChart.axisRight.isEnabled = false
+
+        mAveragePhaseChart.legend.typeface = tf
+        mAveragePhaseChart.axisLeft.typeface = tf
+        mAveragePhaseChart.axisLeft.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART)
+        mAveragePhaseChart.axisLeft.spaceTop = 20f
+        mAveragePhaseChart.axisLeft.axisMinimum = 0f
+        mAveragePhaseChart.axisLeft.axisMaximum = NUM_DAYS.toFloat() + 1 - NUM_DAYS_OFFSET
+        mAveragePhaseChart.axisLeft.isEnabled = true
+        mAveragePhaseChart.axisLeft.isInverted = true
+        mAveragePhaseChart.axisLeft.setDrawLimitLinesBehindData(true)
+        mAveragePhaseChart.axisLeft.setLabelCount(0, true)
+
+        mAveragePhaseChart.xAxis.axisMinimum = -12f
+        mAveragePhaseChart.xAxis.axisMaximum = 12f
+
+
+        // Color the charts according to user theme
         val nightMod =
             requireActivity().resources.configuration.uiMode and resConfiguration.UI_MODE_NIGHT_MASK
         if (nightMod == resConfiguration.UI_MODE_NIGHT_YES) {
-            mVizChart.setBackgroundColor(Color.BLACK)
-            leftAxis.textColor = Color.WHITE
-            xAxis.textColor = Color.WHITE
-            mVizChart.legend.textColor = Color.WHITE
+            mDailyDataChart.setBackgroundColor(Color.BLACK)
+            mDailyDataChart.axisLeft.textColor = Color.WHITE
+            mDailyDataChart.xAxis.textColor = Color.WHITE
+            mDailyDataChart.legend.textColor = Color.WHITE
+            mAveragePhaseChart.setBackgroundColor(Color.BLACK)
+            mAveragePhaseChart.axisLeft.textColor = Color.WHITE
+            mAveragePhaseChart.xAxis.textColor = Color.WHITE
+            mAveragePhaseChart.legend.textColor = Color.WHITE
         } else {
-            mVizChart.setBackgroundColor(Color.WHITE)
-            leftAxis.textColor = Color.BLACK
-            xAxis.textColor = Color.BLACK
-            mVizChart.legend.textColor = Color.BLACK
+            mDailyDataChart.setBackgroundColor(Color.WHITE)
+            mDailyDataChart.axisLeft.textColor = Color.BLACK
+            mDailyDataChart.xAxis.textColor = Color.BLACK
+            mDailyDataChart.legend.textColor = Color.BLACK
+            mAveragePhaseChart.setBackgroundColor(Color.WHITE)
+            mAveragePhaseChart.axisLeft.textColor = Color.BLACK
+            mAveragePhaseChart.xAxis.textColor = Color.BLACK
+            mAveragePhaseChart.legend.textColor = Color.BLACK
+        }
+
+        // Get NUM_DAYS ago in Epoch Minutes
+        val day1InMinutes = TimeUnit.SECONDS.toMinutes(
+            LocalDate.now()
+                .minusDays(NUM_DAYS.toLong())
+                .atStartOfDay(ZoneId.systemDefault())
+                .toEpochSecond()
+        )
+
+        for (i in 0 until NUM_DAYS) {
+            val llXAxis =
+                LimitLine((day1InMinutes + (NUM_DATA_POINTS_PER_DAY * i.toFloat())), "Day ${i - NUM_DAYS_OFFSET + 1}")
+            llXAxis.lineWidth = 1f
+            llXAxis.lineColor = mDailyDataChart.xAxis.textColor
+            llXAxis.textColor = mDailyDataChart.xAxis.textColor
+            llXAxis.enableDashedLine(10f, 10f, 0f)
+            llXAxis.labelPosition = LimitLine.LimitLabelPosition.RIGHT_BOTTOM
+            mDailyDataChart.xAxis.addLimitLine(llXAxis)
+        }
+
+        for (i in 1 until NUM_DAYS - NUM_DAYS_OFFSET + 1) {
+            val llXAxis = LimitLine(i.toFloat(), "Day ${i}")
+            llXAxis.lineWidth = 1f
+            llXAxis.lineColor = mAveragePhaseChart.xAxis.textColor
+            llXAxis.textColor = mAveragePhaseChart.xAxis.textColor
+            llXAxis.enableDashedLine(10f, 10f, 0f)
+            llXAxis.labelPosition = LimitLine.LimitLabelPosition.LEFT_TOP
+            mAveragePhaseChart.axisLeft.addLimitLine(llXAxis)
         }
     }
 
@@ -266,7 +318,7 @@ class VisualizationFragment : Fragment() {
                 mChartDataSets[0].isVisible = binding.rawDataCheckBox.isChecked
             }
         }
-        mVizChart.invalidate()
+        mDailyDataChart.invalidate()
     }
 
 }

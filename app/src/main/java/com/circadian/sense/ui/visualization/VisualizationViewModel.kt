@@ -6,11 +6,14 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.circadian.sense.*
 import com.circadian.sense.utilities.*
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
@@ -19,13 +22,18 @@ import kotlin.system.measureTimeMillis
 class VisualizationViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "VizViewModel"
     private val mUserDataManager: UserDataManager = UserDataManager(application.applicationContext)
+//    private val mObserverBasedFilter: ObserverBasedFilter = ObserverBasedFilter()
+    private val mSSKF: SteadyStateKalmanFilter = SteadyStateKalmanFilter()
+    private val mOrchestrator = Orchestrator(application.applicationContext)
 
-    private val _chartDataset = MutableLiveData<ArrayList<ILineDataSet>>()
-    val chartData: LiveData<ArrayList<ILineDataSet>> = _chartDataset
+    private val _dailyDataChartDataset = MutableLiveData<ArrayList<ILineDataSet>>()
+    val dailyDataChartDataset: LiveData<ArrayList<ILineDataSet>> = _dailyDataChartDataset
+    private val _averagePhaseDataset = MutableLiveData<BubbleData>()
+    val averagePhaseDataset: LiveData<BubbleData> = _averagePhaseDataset
 
     init {
         // Attempt to create the dataset immediately
-        createChartDataset()
+//        createChartDataset()
     }
 
     /**
@@ -39,12 +47,27 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         Log.i(TAG, "Creating chart dataset")
 
         // Still timing to see how long this takes
-        val elapsed = measureTimeMillis {
-            val data = mUserDataManager.loadUserData()
-            if (data != null) {
-                _chartDataset.value = createChartDataset(data.y, data.yHat)
+            viewModelScope.launch (Dispatchers.IO) {
+//                mOrchestrator.getFreshData()
+                val data = mUserDataManager.loadUserData()
+                if (data != null) {
+//                    Log.i(TAG, "Data: ${data.y.asList()}")
+//                    Log.i(TAG,"${data.yHat.asList()}")
+//                    Log.i(TAG,"${data.xHat1.asList()}")
+//                    Log.i(TAG,"${data.xHat2.asList()}")
+                    val elapsed = measureTimeMillis {
+//                    val avgPhase = mObserverBasedFilter.estimateAverageDailyPhase(data.xHat1, data.xHat2)
+                    val avgPhase = mSSKF.estimateAverageDailyPhase(data.xHat1, data.xHat2)
+                    withContext(Dispatchers.Main){
+                        _dailyDataChartDataset.value = createChartDataset(data.y, data.yHat)
+                        if (avgPhase != null){
+                        _averagePhaseDataset.value = createAveragePhaseChartDataset(avgPhase)
+                        }
+                    }
+                    }; Log.i(TAG, "Total time taken creating chart data: $elapsed")
+                }
             }
-        }; Log.i(TAG, "Total time taken creating chart data: $elapsed")
+
     }
 
     /**
@@ -92,7 +115,8 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         val rawDataEntries = mutableListOf<Entry>()
         val filterDataEntries = mutableListOf<Entry>()
 
-        for (entry in y.indices) {
+        val startIdx = 1440*NUM_DAYS_OFFSET
+        for (entry in startIdx..y.lastIndex) {
             val x = (day1InMinutes + entry).toFloat()
             rawDataEntries.add(Entry(x, zeroFreeY[entry]))
             filterDataEntries.add(Entry(x, yHat[entry]))
@@ -103,11 +127,13 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         rawDataset.color = Color.rgb(37, 137, 245)
         rawDataset.setDrawCircles(false)
         rawDataset.lineWidth = 0.5f
+        rawDataset.isHighlightEnabled = false
 
         val filterDataset = LineDataSet(filterDataEntries, YHAT_LABEL)
         filterDataset.color = Color.rgb(207, 19, 19)
         filterDataset.setDrawCircles(false)
         filterDataset.lineWidth = 3f
+        filterDataset.isHighlightEnabled = false
 
         // Create a list of datasets which the chart in the Visualization UI components can plot
         val dataSets: ArrayList<ILineDataSet> = ArrayList()
@@ -115,5 +141,37 @@ class VisualizationViewModel(application: Application) : AndroidViewModel(applic
         dataSets.add(1, filterDataset)
 
         return dataSets
+    }
+
+    /**
+     *
+     */
+    private fun createAveragePhaseChartDataset(
+        averagePhaseData: MutableList<FloatArray>
+    ): BubbleData {
+
+//        Log.i(TAG, "Average daily phase: ${averagePhaseData[0].asList()}")
+        val averagePhaseEntries = mutableListOf<BubbleEntry>()
+        val sortIndices = averagePhaseData[1]
+        val averagePhases = averagePhaseData[0]
+//        val top = averagePhases.first()
+
+//        val startIdx = NUM_DAYS_OFFSET
+        for (entry in sortIndices.indices) {
+            val x = sortIndices[entry]
+            averagePhaseEntries.add(BubbleEntry(averagePhases[x.toInt()], x+1, 5f))
+//            Log.i(TAG, "Entries: ${averagePhases[entry]}, $x")
+        }
+        val bData = BubbleDataSet(
+            averagePhaseEntries,
+            AVERAGE_DAILY_PHASE_LABEL
+        )
+        bData.setDrawValues(false)
+        bData.setDrawIcons(true)
+        bData.color = Color.rgb(37, 137, 245)
+        bData.isVisible = true
+        bData.isHighlightEnabled = false
+
+        return BubbleData(bData)
     }
 }

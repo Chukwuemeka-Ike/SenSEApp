@@ -6,35 +6,50 @@
     android:layout_height="match_parent"
     tools:context=".ui.home.HomeFragment">
 
-    <LinearLayout
-        android:id="@+id/linearLayout"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/homeView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+<!--    <LinearLayout-->
+<!--        android:id="@+id/linearLayout"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:orientation="vertical"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent">-->
 
         <TextView
+            android:id="@+id/home_title"
             android:layout_width="match_parent"
             android:layout_height="@dimen/big_padding"
-            android:layout_marginBottom="@dimen/reg_padding"
             android:gravity="center"
+            android:layout_marginTop="@dimen/big_padding"
             android:text="@string/app_name"
             android:textStyle="bold"
-            android:textSize="@dimen/large_font_size" />
+            android:textSize="@dimen/large_font_size"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
 
         <Button
             android:id="@+id/circadian_health_button"
             android:layout_width="match_parent"
             android:layout_height="@dimen/card_button_height"
             android:layout_marginStart="@dimen/small_padding"
-            android:layout_marginTop="@dimen/reg_padding"
+            android:layout_marginTop="@dimen/big_padding"
             android:layout_marginEnd="@dimen/small_padding"
             android:fontFamily="@string/basic_font"
             android:text="@string/circadian_health_button_label"
-            android:textSize="@dimen/normal_font_size" />
+            android:textSize="@dimen/normal_font_size"
+            app:layout_constraintTop_toBottomOf="@id/home_title"/>
 
         <Button
             android:id="@+id/who_we_are_button"
@@ -45,7 +60,8 @@
             android:layout_marginEnd="@dimen/small_padding"
             android:fontFamily="@string/basic_font"
             android:text="@string/who_we_are_button_label"
-            android:textSize="@dimen/normal_font_size" />
+            android:textSize="@dimen/normal_font_size"
+            app:layout_constraintTop_toBottomOf="@id/circadian_health_button"/>
 
         <Button
             android:id="@+id/data_use_button"
@@ -57,10 +73,13 @@
             android:layout_marginBottom="@dimen/big_padding"
             android:fontFamily="@string/basic_font"
             android:text="@string/data_use_button_label"
-            android:textSize="@dimen/normal_font_size" />
-    </LinearLayout>
+            android:textSize="@dimen/normal_font_size"
+            app:layout_constraintTop_toBottomOf="@id/who_we_are_button"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+<!--    </LinearLayout>-->
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-
+    </ScrollView>
 
 
 

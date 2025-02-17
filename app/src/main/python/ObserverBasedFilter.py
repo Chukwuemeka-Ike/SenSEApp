@@ -1,10 +1,21 @@
-from math import pi, floor
+'''
+Rensselaer Polytechnic Institute - Julius Lab
+SenSE Project
+Author - Chukwuemeka Osaretin Ike
+
+Description:
+'''
+import itertools
 import numpy as np
+
+from math import pi, floor
 from scipy import signal
 from scipy.fft import fft
-import itertools
+from scipy.linalg import expm
+
 
 INT_MAX = 2147483647
+
 
 class ObserverBasedFilter:
     '''
@@ -14,54 +25,103 @@ class ObserverBasedFilter:
         Think of this class as a single place we can change simulation and 
         optimization parameters. 
         
-        It returns filter outputs and optimized gains as needed in the 
+        It returns filter outputs and optimized params as needed in the
         Kotlin class.
     '''
     # Filter parameters
-    __omg = 2*pi/24
-    __zeta = 1
-    __gamma_d = 1
-    __order = 3
-    __stateLength = (2 * __order + 1)
+    _omg = 2*pi/24
+    _zeta = 1
+    _gamma_d = 1
+    _order = 3
+    _stateLength = (2 * _order + 1)
+
+    # Create the autonomous A matrix given specific size. Currently hardcoded to dt=1/60
+    # TODO: Make this better
+    Ac = np.zeros([_stateLength, _stateLength])
+    for k in range(_order):
+        i = (1 + k) * 2
+        k = k + 1 #handles the one off error
+        Ac[i - 2:i, i - 2:i] = [[0, 1], [float(-(k * _omg) ** 2), 0]]
+    _A_auto = expm(Ac*1/60)
     
     # Optimization hyperparameters
-    __mu = 100
-    __rho = 2
-    __lambda = 50
-    __max_iterations = 25
+    _mu = 100
+    _rho = 2
+    _lambda = 50
+    _max_iterations = 25
 
-    # Bounds on the filter gains used for optimization
-    __LB = -5
-    __lStart = 0
-    __rEnd = 8
-    __mid = (__lStart+__rEnd)/2
+    # Bounds on the filter params used for optimization
+    _LB = -5
+    _lStart = 0
+    _rEnd = 8
+    _mid = (_lStart+_rEnd)/2
+
+    def estimateAverageDailyPhase(self, xHat1: np.ndarray, xHat2: np.ndarray, numDays: int, numDataPointsPerDay: int) -> np.ndarray:
+        '''Computes the frequency spectrum of the input [y] sampled according to [t].
+
+        Args:
+            xHat (np.ndarray) - filter state 1 and 2 
+            numDays (int) - number of days 
+            numDataPointsPerDay (int) - number of data points per day - 1440 for 1-minute intervals
+        Returns:
+            averageDailyPhase (np.ndarray) - array of average daily phase difference from day 1 in hours
+        '''
+
+        x1 = xHat1
+        x2 = xHat2
+        # print(xHat1)
+        # print(xHat2.shape)
+        theta = np.mod(-np.arctan2(x2, self._omg*x1) + pi/2, 2*pi) - pi
+        # print(theta.shape)
+
+        averageDailyPhase = np.zeros([1, numDays])
+        day1RangeStart = 0
+        day1RangeEnd = numDataPointsPerDay
+
+        for i in range(0, numDays):
+            day2RangeStart = (numDataPointsPerDay*i)
+            day2RangeEnd = (numDataPointsPerDay*(i+1))
+            # print(day2RangeStart, day2RangeEnd)
+            # print((theta[0,day2RangeStart:day2RangeEnd]))
+            # print(np.unwrap(theta[day2RangeStart:day2RangeEnd]))
+            # print((np.unwrap(theta[day2RangeStart:day2RangeEnd])).shape)
+            # print(np.unwrap(theta[day1RangeStart:day1RangeEnd]) - np.unwrap(theta[day2RangeStart:day2RangeEnd]))
+            # print((np.unwrap(theta[day1RangeStart:day1RangeEnd]) - np.unwrap(theta[day2RangeStart:day2RangeEnd])).shape)
+            # print((1/self._omg)*np.mean( np.unwrap(theta[day1RangeStart:day1RangeEnd]) - np.unwrap(theta[day2RangeStart:day2RangeEnd]), axis=1))
+
+            averageDailyPhase[0, i] = (1/self._omg)*np.mean( np.unwrap(theta[0, day1RangeStart:day1RangeEnd]) - np.unwrap(theta[0, day2RangeStart:day2RangeEnd]), axis=0)
+
+        averageDailyPhase = np.mod(12+averageDailyPhase, 24) - 12
+        # print(xHat1.shape)
+        # print(averageDailyPhase)
+        return averageDailyPhase
 
     def simulateDynamics(self, t:np.ndarray, y: np.ndarray, A: np.ndarray, B: np.ndarray, C: np.ndarray, D: np.ndarray) -> np.ndarray:
+        '''Simulates the system dynamics on the input data [y].
+
+        Args:
+            t (np.ndarray) - time values (in hours from first entry) for the data
+            y (np.ndarray) - biometric data values
+            A (np.ndarray) - discrete-time A matrix
+            B (np.ndarray) - discrete-time B matrix
+            C (np.ndarray) - discrete-time C matrix
+            D (np.ndarray) - discrete-time D matrix
+        Returns:
+            filterOutput(np.ndarray) - contains [xHat; yHat]:
+                xHat (np.ndarray) - filter state estimates 
+                yHat (np.ndarray) - filter output
         '''
-            Simulates the system dynamics on the input data [y]
-            Parameters:
-                t (np.ndarray) - time values (in hours from first entry) for the data
-                y (np.ndarray) - biometric data values
-                A (np.ndarray) - discrete-time A matrix
-                B (np.ndarray) - discrete-time B matrix
-                C (np.ndarray) - discrete-time C matrix
-                D (np.ndarray) - discrete-time D matrix
-            Returns:
-                filterOutput(np.ndarray) - contains [xHat; yHat]:
-                    xHat (np.ndarray) - filter state estimates 
-                    yHat (np.ndarray) - filter output
-        '''
-        xHat = np.zeros([self.__stateLength, len(y)], dtype=float)
-        xHat[self.__stateLength-1, 0] = 70
+        xHat = np.zeros([self._stateLength, len(y)])
+        xHat[self._stateLength-1, 0] = 70
 
         for j in range(1, len(y)):
             # TODO: Make sure this is as efficient as possible
             # The reshapes are all to make sure it's the right dimension
             # Update the current state based on previous filter state and previous input
             if y[j-1] == 0:
-                xHat[:,j] = np.reshape(np.matmul(A,xHat[:,j-1]).T, (self.__stateLength))
+                xHat[:,j] = np.reshape(np.matmul(self._A_auto,xHat[:,j-1]).T, (self._stateLength))
             else:
-                xHat[:,j] = np.reshape(np.reshape(np.matmul(A,xHat[:,j-1]).T, (self.__stateLength,1)) + (B*y[j-1]), (self.__stateLength))
+                xHat[:,j] = np.reshape(np.reshape(np.matmul(A,xHat[:,j-1]).T, (self._stateLength,1)) + (B*y[j-1]), (self._stateLength))
         
         # Multiply the whole history of filter states by the C matrix to give us the output history
         yHat = np.matmul(C, xHat)
@@ -69,13 +129,13 @@ class ObserverBasedFilter:
         return np.append(xHat, yHat, axis=0)
 
     def optimizeFilter(self, t:np.ndarray, y: np.ndarray) -> np.ndarray:
-        '''
-            Optimizes the filter given input time and value data
-            Parameters:
-                t (np.ndarray) - time (in hours from first entry) values for the data
-                y (np.ndarray) - biometric data values
-            Returns:
-                L (np.ndarray) - optimal gain matrix
+        '''Optimizes the filter given input time and value data
+
+        Args:
+            t (np.ndarray) - time (in hours from first entry) values for the data
+            y (np.ndarray) - biometric data values
+        Returns:
+            L (np.ndarray) - optimal gain matrix
         '''
 
         # Random number generator for randomizing the combinations of population members
@@ -87,28 +147,28 @@ class ObserverBasedFilter:
         # print(A,B,C,D)
         # print(np.absolute(np.linalg.eig(A)[0]))
         # print(np.absolute(np.linalg.eig(A)[0]) > 1)
-        # print(self.__checkStability(A))
+        # print(self._checkStability(A))
 
         # Create initial population for optimization
-        population = self.__initializePopulation()
-        cost = np.zeros([self.__mu, 1], dtype=float)
-        # avgCost = np.zeros([self.__max_iterations, 1], dtype=float)
-        newGen = np.zeros([self.__lambda, population.shape[1]], dtype=float)
-        newCost = np.zeros([self.__lambda, 1], dtype=float)
+        population = self._initializePopulation()
+        cost = np.zeros([self._mu, 1])
+        # avgCost = np.zeros([self._max_iterations, 1])
+        newGen = np.zeros([self._lambda, population.shape[1]])
+        newCost = np.zeros([self._lambda, 1])
 
         # Generate sequential combinations of [1:mu]
-        combinations = np.array(list(itertools.combinations(range(0, self.__mu ), self.__rho)))
+        combinations = np.array(list(itertools.combinations(range(0, self._mu ), self._rho)))
 
         # Compute the original spectrum for calculating costs of filter outputs
-        originalSpectrum, f, _ = self.__computeSpectrum(t, y)
+        originalSpectrum, f, _ = self._computeSpectrum(t, y)
 
         # Compute costs of the initial population
-        for member in range(0, self.__mu):
-            L = population[member, :].reshape(self.__stateLength, 1)
+        for member in range(0, self._mu):
+            L = population[member, :].reshape(self._stateLength, 1)
             A, B, C, D = self.createStateSpace(t, L)
 
             # Only simulateDynamics if the system is stable
-            if not self.__checkStability(A):
+            if not self._checkStability(A):
                 cost[member] = INT_MAX
                 continue
             
@@ -118,27 +178,28 @@ class ObserverBasedFilter:
             yHat = out[-1,:]
 
             # Compute the output spectrum and corresponding cost
-            filteredSpectrum, _, _ = self.__computeSpectrum(t, yHat)
-            cost[member] = self.__computeCost(originalSpectrum, filteredSpectrum, f)
+            filteredSpectrum, _, _ = self._computeSpectrum(t, yHat)
+            filteredSpectrum = filteredSpectrum.reshape(originalSpectrum.shape)
+            cost[member] = self._computeCost(originalSpectrum, filteredSpectrum, f)
         
-        # Run the optimization for __max_iterations
-        for iteration in range(0, self.__max_iterations):
+        # Run the optimization for _max_iterations
+        for iteration in range(0, self._max_iterations):
             # Randomize the rows of combinations
             # Noah's was repeating integers (bad because it would randomly give certain elements more weight than they might deserve)
             # labels = np.random.randint(1, len(combinations), len(combinations)) 
             labels = rng.choice(len(combinations), len(combinations), replace=False)
 
-            # Create __lambda new offspring and calculate their costs
-            for j in range(self.__lambda):
+            # Create _lambda new offspring and calculate their costs
+            for j in range(self._lambda):
                 # Create offspring with a random pair from combinations
-                newGen[j, :] = np.mean(population[combinations[labels[j], :], :], axis=0).reshape(1,self.__stateLength)
+                newGen[j, :] = np.mean(population[combinations[labels[j], :], :], axis=0).reshape(1,self._stateLength)
 
                 # Create the state space with the new offspring
-                L = newGen[j, :].reshape(self.__stateLength, 1)
+                L = newGen[j, :].reshape(self._stateLength, 1)
                 A, B, C, D = self.createStateSpace(t, L)
                 
                 # Only simulateDynamics if the system is stable
-                if not self.__checkStability(A):
+                if not self._checkStability(A):
                     newCost[j] = INT_MAX
                     continue
                 
@@ -147,15 +208,16 @@ class ObserverBasedFilter:
                 yHat = out[-1,:]
 
                 # Compute the output spectrum and corresponding cost
-                filteredSpectrum, _, _ = self.__computeSpectrum(t, yHat)
-                newCost[j] = self.__computeCost(originalSpectrum, filteredSpectrum, f)
+                filteredSpectrum, _, _ = self._computeSpectrum(t, yHat)
+                filteredSpectrum = filteredSpectrum.reshape(originalSpectrum.shape)
+                newCost[j] = self._computeCost(originalSpectrum, filteredSpectrum, f)
             
             # Append the newGen and newCost to allow us work on one array each
             population = np.append(population, newGen, axis=0)
             cost = np.append(cost, newCost)
 
             # Remove the lambda highest costs from both cost and population
-            maxIndex = np.argpartition(cost, -self.__lambda)[-self.__lambda:]
+            maxIndex = np.argpartition(cost, -self._lambda)[-self._lambda:]
             
             cost = np.delete(cost, maxIndex)
             population = np.delete(population, maxIndex, axis=0)
@@ -165,12 +227,12 @@ class ObserverBasedFilter:
 
         # Return the best gain in the final population as L
         idx = np.argmin(cost)
-        return population[idx, :].reshape(1, self.__stateLength) # Returning this shape to ease Kotlin PyObject conversion
+        return population[idx, :].reshape(1, self._stateLength) # Returning this shape to ease Kotlin PyObject conversion
             
     def createStateSpace(self, t:np.ndarray, L: np.ndarray):
-        '''
-            Creates discrete-time state space given the time vector and gain matrix
-            Parameters: 
+        '''Creates discrete-time state space given the time vector and gain matrix.
+
+            Args: 
                 t (np.ndarray) - time (in hours from first entry) values for the data
                 L (np.ndarray) - gain matrix 
             Returns:
@@ -180,23 +242,20 @@ class ObserverBasedFilter:
                 D (np.ndarray) - discrete-time D matrix
         '''
         
-        L = np.array(L).reshape(self.__stateLength, 1)       # Ensure L is an np array of correct dimension
+        L = np.array(L).reshape(self._stateLength, 1)       # Ensure L is an np array of correct dimension
 
-        Ac = np.zeros([self.__stateLength, self.__stateLength], dtype = float)
-        # Bc = np.zeros([self.__stateLength, 1], dtype = float)
-        Cc = np.zeros([1, self.__stateLength], dtype = float)
+        Ac = np.zeros([self._stateLength, self._stateLength])
+        Cc = np.zeros([1, self._stateLength])
         Dc = 0
 
-        # Populate State matrices in slices
-        for k in range(self.__order):
+        # Populate State matrices in slices.
+        for k in range(self._order):
             i = (1 + k) * 2
             k = k + 1 #handles the one off error
-            Ac[i - 2:i, i - 2:i] = [[0, 1], [float(-(k * self.__omg) ** 2), 0]]
-            # Bc[i-2:i] = [[0],[(k*self.__omg)**2]]
-            Cc[0][i-1] = (2 * self.__zeta) / (k * self.__omg)
+            Ac[i - 2:i, i - 2:i] = [[0, 1], [float(-(k * self._omg) ** 2), 0]]
+            Cc[0][i-1] = (2 * self._zeta) / (k * self._omg)
 
-        # Assign edge values
-        # Bc[len(Bc)-1][0] = self.__gamma_d
+        # Assign edge values.
         Cc[0][len(Cc[0])-1] = 1
 
         A = (Ac - L*Cc)
@@ -212,26 +271,26 @@ class ObserverBasedFilter:
         # Return the discrete system because we're only using discrete for the app 
         return discSystem.A, discSystem.B, discSystem.C, discSystem.D
 
-    def __initializePopulation(self):
+    def _initializePopulation(self):
         '''
             Creates the initial population using a log scale sampling (detailed in README and paper)
             Returns:
                 population (np.ndarray) - the initial population to use in the filter optimization
         '''
-        N = (self.__rEnd-self.__lStart)*np.random.rand(self.__mu, self.__stateLength) + self.__lStart
+        N = (self._rEnd-self._lStart)*np.random.rand(self._mu, self._stateLength) + self._lStart
 
         diff = 0.5 
 
         population = np.zeros(N.shape)
-        population[N > self.__mid+diff] = 10**(N[N > self.__mid+diff] - self.__mid + self.__LB)
-        population[N < self.__mid-diff] = -10**(self.__mid - N[N < self.__mid-diff] + self.__LB)
+        population[N > self._mid+diff] = 10**(N[N > self._mid+diff] - self._mid + self._LB)
+        population[N < self._mid-diff] = -10**(self._mid - N[N < self._mid-diff] + self._LB)
         
         return population
     
-    def __computeSpectrum(self, t: np.ndarray, y: np.ndarray) -> np.ndarray:
+    def _computeSpectrum(self, t: np.ndarray, y: np.ndarray) -> np.ndarray:
         '''
             Computes the frequency spectrum of the input [y] sampled according to [t]
-            Parameters:
+            Args:
                 t (np.ndarray) - time values for the data
                 y (np.ndarray) - biometric data values
             Returns:
@@ -250,10 +309,10 @@ class ObserverBasedFilter:
 
         return P, f, lent
 
-    def __computeCost(self, originalSpectrum: np.ndarray, filteredSpectrum: np.ndarray, f: np.ndarray) -> float:
+    def _computeCost(self, originalSpectrum: np.ndarray, filteredSpectrum: np.ndarray, f: np.ndarray) -> float:
         '''
             Computes the cost of the filteredSpectrum by comparing it with the originalSpectrum
-            Parameters:
+            Args:
                 originalSpectrum (np.ndarray) - frequency spectrum of the original signal
                 filteredSpectrum (np.ndarray) - frequency spectrum of the output filtered signal
                 f (np.ndarray) - frequency values corresponding to originalSpectrum
@@ -272,11 +331,11 @@ class ObserverBasedFilter:
 
         return J_harmo + J_noise
     
-    def __checkStability(self, A) -> bool:
+    def _checkStability(self, A) -> bool:
         '''
             Checks if the dynamics are stable by making sure the eigenvalues are in the 
             unit circle (assuming a discrete-time system)
-            Parameters:
+            Args:
                 A (np.ndarray) - dynamics matrix
             Returns:
                 isStable (bool) - whether the dynamics are stable or not

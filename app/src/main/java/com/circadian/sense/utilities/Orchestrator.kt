@@ -23,16 +23,17 @@ class Orchestrator(
 
     private val TAG = "Orchestrator"
 
+    private val mAuthService: AuthorizationService = AuthorizationService(mContext)
     private val mAuthStateManager: AuthStateManager = AuthStateManager.getInstance(mContext)
     private val mConfiguration: Configuration = Configuration.getInstance(mContext)
-    private val mAuthService: AuthorizationService = AuthorizationService(mContext)
     private val mOBF: ObserverBasedFilter = ObserverBasedFilter()
+    private val mSSKF: SteadyStateKalmanFilter = SteadyStateKalmanFilter()
     private val mUserDataManager: UserDataManager = UserDataManager(mContext)
 
     /**
      * Returns saved data if it is current, or requests data, runs the filter and
      * returns the new data
-     * @return DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
+     * @return DataPack(t, y, yHat, dataTimestamp, params, paramsTimestamp)
      */
     suspend fun getFreshData(): DataPack? {
         if (!mAuthStateManager.current.isAuthorized) {
@@ -60,64 +61,110 @@ class Orchestrator(
 //            Log.i(TAG, "Received y: ${newData!![1].asList()}")
 
             // Optimize the filter on the new data, then simulate dynamics with the optimal filter
-            val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-            val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!.last()
+//            val L = mOBF.optimizeFilter(newData!![0], newData!![1])
+//            val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+            val params = mSSKF.optimizeFilter(newData!![0], newData!![1])
+            val filterOutput = mSSKF.simulateDynamics(newData!![0], newData!![1], params!!)!!
+            val yHat = filterOutput.last()
+            val xHat1 = filterOutput[0]
+            val xHat2 = filterOutput[1]
 
-            return finishUp(newData!![0], newData!![1], yHat, yesterdayString, L!!, todayString)
+            return finishUp(
+                newData!![0],
+                newData!![1],
+                yHat,
+                xHat1,
+                xHat2,
+                yesterdayString,
+//                L!!,
+                params!!,
+                todayString
+            )
         }
         // If the data is not up to date, request new data
         else if (filterData.dataTimestamp < yesterdayString) {
             Log.i(TAG, "Stale saved data, requesting new data")
             Log.i(TAG, "Data timestamp: ${filterData.dataTimestamp}")
-            Log.i(TAG, "Gains timestamp: ${filterData.gainsTimestamp}")
+            Log.i(TAG, "Gains timestamp: ${filterData.filterParamsTimestamp}")
 
             newData = performActionWithFreshTokensSuspend()
 
-            // If gains are fresh, finishUp
-            if (filterData.gainsTimestamp > weekAgoString) {
-                Log.i(TAG, "Fresh gains, finishing up")
-                val yHat =
-                    mOBF.simulateDynamics(newData!![0], newData!![1], filterData.gains)!!.last()
+            // If params are fresh, finishUp
+            if (filterData.filterParamsTimestamp > weekAgoString) {
+                Log.i(TAG, "Fresh params, finishing up")
+//                val filterOutput =
+//                    mOBF.simulateDynamics(newData!![0], newData!![1], filterData.params)!!
+                val filterOutput = mSSKF.simulateDynamics(newData!![0], newData!![1], filterData.filterParams)!!
+                val yHat = filterOutput.last()
+                val xHat1 = filterOutput[0]
+                val xHat2 = filterOutput[1]
                 return finishUp(
                     newData!![0],
                     newData!![1],
                     yHat,
+                    xHat1,
+                    xHat2,
                     yesterdayString,
-                    filterData.gains,
-                    filterData.gainsTimestamp
+                    filterData.filterParams,
+                    filterData.filterParamsTimestamp
                 )
             } else {
-                Log.i(TAG, "Stale gains, optimizing filter first")
-                val L = mOBF.optimizeFilter(newData!![0], newData!![1])
-                val yHat = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!.last()
-                return finishUp(newData!![0], newData!![1], yHat, yesterdayString, L!!, todayString)
+                Log.i(TAG, "Stale params, optimizing filter first")
+//                val L = mOBF.optimizeFilter(newData!![0], newData!![1])
+//                val filterOutput = mOBF.simulateDynamics(newData!![0], newData!![1], L!!)!!
+                val params = mSSKF.optimizeFilter(newData!![0], newData!![1])
+                val filterOutput = mSSKF.simulateDynamics(newData!![0], newData!![1], params!!)!!
+                val yHat = filterOutput.last()
+                val xHat1 = filterOutput[0]
+                val xHat2 = filterOutput[1]
+                return finishUp(
+                    newData!![0],
+                    newData!![1],
+                    yHat,
+                    xHat1,
+                    xHat2,
+                    yesterdayString,
+//                    L!!,
+                    params!!,
+                    todayString
+                )
             }
         } else {
             Log.i(TAG, "Fresh saved data.")
             Log.i(TAG, "Data timestamp: ${filterData.dataTimestamp}")
-            Log.i(TAG, "Gains timestamp: ${filterData.gainsTimestamp}")
+            Log.i(TAG, "Gains timestamp: ${filterData.filterParamsTimestamp}")
 
-            // If gains are fresh, return the DataPack directly. No need to re-save what's current
-            if (filterData.gainsTimestamp > weekAgoString) {
-                Log.i(TAG, "Fresh gains, finishing up")
+            // If params are fresh, return the DataPack directly. No need to re-save what's current
+            if (filterData.filterParamsTimestamp > weekAgoString) {
+                Log.i(TAG, "Fresh params, finishing up")
                 return DataPack(
                     filterData.t,
                     filterData.y,
                     filterData.yHat,
+                    filterData.xHat1,
+                    filterData.xHat2,
                     filterData.dataTimestamp,
-                    filterData.gains,
-                    filterData.gainsTimestamp
+                    filterData.filterParams,
+                    filterData.filterParamsTimestamp
                 )
             } else {
-                Log.i(TAG, "Stale gains, optimizing filter first")
-                val L = mOBF.optimizeFilter(filterData.t, filterData.y)
-                val yHat = mOBF.simulateDynamics(filterData.t, filterData.y, L!!)!!.last()
+                Log.i(TAG, "Stale params, optimizing filter first")
+//                val L = mOBF.optimizeFilter(filterData.t, filterData.y)
+//                val filterOutput = mOBF.simulateDynamics(filterData.t, filterData.y, L!!)!!
+                val params = mSSKF.optimizeFilter(filterData.t, filterData.y)
+                val filterOutput = mSSKF.simulateDynamics(filterData.t, filterData.y, params!!)!!
+                val yHat = filterOutput.last()
+                val xHat1 = filterOutput[0]
+                val xHat2 = filterOutput[1]
                 return finishUp(
                     filterData.t,
                     filterData.y,
                     yHat,
+                    xHat1,
+                    xHat2,
                     filterData.dataTimestamp,
-                    L!!,
+//                    L!!,
+                    params!!,
                     todayString
                 )
             }
@@ -151,7 +198,7 @@ class Orchestrator(
         suspendCoroutine {
             mAuthStateManager.current.performActionWithFreshTokens(
                 mAuthService
-            ) { accessToken, idToken, ex ->
+            ) { accessToken, _, _ ->
 //                Log.i(TAG, "${accessToken}, ${idToken}, $ex")
                 mAuthStateManager.replace(mAuthStateManager.current) // Update the state
                 val userId = getUserID()
@@ -176,20 +223,22 @@ class Orchestrator(
      * @param [yHat] - filter data array
      * @param [dataTimestamp] - timestamp of when data was fetched
      * @param [L] - optimal gain array
-     * @param [gainsTimestamp] - timestamp of when filter was last optimized
+     * @param [paramsTimestamp] - timestamp of when filter was last optimized
      * @return data - DataPack packaging all the data
      */
     private suspend fun finishUp(
         t: FloatArray,
         y: FloatArray,
         yHat: FloatArray,
+        xHat1: FloatArray,
+        xHat2: FloatArray,
         dataTimestamp: String,
         L: FloatArray,
-        gainsTimestamp: String
+        paramsTimestamp: String
     ): DataPack? {
         return try {
             //
-            val data = DataPack(t, y, yHat, dataTimestamp, L, gainsTimestamp)
+            val data = DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, L, paramsTimestamp)
             withContext(Dispatchers.IO) {
                 // Save the data to file
                 mUserDataManager.writeUserData(data)

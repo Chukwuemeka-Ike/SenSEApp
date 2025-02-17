@@ -43,7 +43,7 @@ class UserDataManager(private val context: Context) {
 
     /**
      * Loads the filter data from app-specific storage. Returns null if there's nothing saved
-     * @return DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
+     * @return DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, params, paramsTimestamp)
      */
     fun loadUserData(): DataPack? {
         return try {
@@ -67,30 +67,38 @@ class UserDataManager(private val context: Context) {
             val tJSON = jsonData.getJSONArray(timeKey)
             val yJSON = jsonData.getJSONArray(yKey)
             val yHatJSON = jsonData.getJSONArray(yHatKey)
-            val gainsJSON = jsonData.getJSONArray(gainsKey)
+            val xHatJSON = jsonData.getJSONArray(xHatKey)
+            val xHat1JSON = xHatJSON.getJSONArray(0)
+            val xHat2JSON = xHatJSON.getJSONArray(1)
+            val paramsJSON = jsonData.getJSONArray(paramsKey)
             val dataTimestamp = jsonData.getString(dataTimestampKey)
-            val gainsTimestamp = jsonData.getString(gainsTimestampKey)
+            val paramsTimestamp = jsonData.getString(paramsTimestampKey)
             val dataLength = tJSON.length()
-            val gainsLength = gainsJSON.length()
+            val paramsLength = paramsJSON.length()
 
-            // Create arrays for t, y, yHat, and the gains
+            // Create arrays for t, y, yHat, and the params
             val t = FloatArray(dataLength)
             val y = FloatArray(dataLength)
             val yHat = FloatArray(dataLength)
+            val xHat1 = FloatArray(dataLength)
+            val xHat2 = FloatArray(dataLength)
 
             for (i in 0 until dataLength) {
                 t[i] = tJSON.getDouble(i).toFloat()
                 y[i] = yJSON.getDouble(i).toFloat()
                 yHat[i] = yHatJSON.getDouble(i).toFloat()
+                xHat1[i] = xHat1JSON.getDouble(i).toFloat()
+                xHat2[i] = xHat2JSON.getDouble(i).toFloat()
             }
 
-            val gains = FloatArray(gainsLength)
-            for (i in 0 until gainsLength) {
-                gains[i] = gainsJSON.getDouble(i).toFloat()
+
+            val params = FloatArray(paramsLength)
+            for (i in 0 until paramsLength) {
+                params[i] = paramsJSON.getDouble(i).toFloat()
             }
 
             Log.i(TAG, "Successfully loaded data")
-            DataPack(t, y, yHat, dataTimestamp, gains, gainsTimestamp)
+            DataPack(t, y, yHat, xHat1, xHat2, dataTimestamp, params, paramsTimestamp)
         } catch (exception: IOException) {
             Log.e(TAG, exception.message ?: "IOException")
             null
@@ -109,16 +117,20 @@ class UserDataManager(private val context: Context) {
             val tArray = JSONArray(data.t)
             val yArray = JSONArray(data.y)
             val yHatArray = JSONArray(data.yHat)
-            val gainsArray = JSONArray(data.gains)
+            val xHat1JSON = JSONArray(data.xHat1)
+            val xHat2JSON = JSONArray(data.xHat2)
+            val xHatJSON = JSONArray(listOf(xHat1JSON,xHat2JSON))
+            val paramsArray = JSONArray(data.filterParams)
             val dataTimestamp = data.dataTimestamp
-            val gainsTimestamp = data.gainsTimestamp
+            val paramsTimestamp = data.filterParamsTimestamp
             val outputString = """{
                 |${timeKey}:${tArray}, 
                 |${yKey}:${yArray}, 
                 |${yHatKey}:${yHatArray},
-                |${gainsKey}:${gainsArray},
+                |${xHatKey}:${xHatJSON},
+                |${paramsKey}:${paramsArray},
                 |${dataTimestampKey}: ${dataTimestamp},
-                |${gainsTimestampKey}: ${gainsTimestamp}
+                |${paramsTimestampKey}: ${paramsTimestamp}
             }""".trimMargin()
 
             // Overwriting wasn't working, so manually deleting the value first
@@ -283,11 +295,16 @@ class UserDataManager(private val context: Context) {
         val dataLength = activitiesIntradayDataset.length()
 
         val numPointsPerDay = 1440
-        val y = FloatArray(numPointsPerDay)
+        val y = FloatArray(numPointsPerDay) //{ 70f }
+
+        // If there's absolutely no data (empty array), return the array of y=0
+        if (dataLength == 0) {
+            return y
+        }
 
         var startIdx = 0    // Index corresponding to timestamp of first data value
         var realIdx = 0     // Idx of where we are in the received data
-        var wantIdx = 0     // Idx of where we want to insert data into y
+        var wantIdx: Int     // Idx of where we want to insert data into y
 
         // Check first timestamp. If the data is not at midnight, set startIdx appropriately
         val midnight = LocalTime.parse("00:00:00")
@@ -330,9 +347,10 @@ class UserDataManager(private val context: Context) {
         private const val timeKey = "t"
         private const val yKey = "y"
         private const val yHatKey = "yHat"
+        private const val xHatKey = "xHat"
         private const val dataTimestampKey = "dataTimestamp"
-        private const val gainsKey = "L"
-        private const val gainsTimestampKey = "gainsTimestamp"
+        private const val paramsKey = "L"
+        private const val paramsTimestampKey = "paramsTimestamp"
         private const val mActivitiesIntradayKey = "activities-heart-intraday"
         private const val mDatasetKey = "dataset"
         private const val TAG = "DataManager"

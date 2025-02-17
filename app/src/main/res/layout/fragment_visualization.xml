@@ -59,13 +59,13 @@
                 android:layout_height="@dimen/reg_padding"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/visualizationChart"
+                app:layout_constraintBottom_toTopOf="@id/dailyDataChart"
                 android:layout_marginEnd="@dimen/small_padding"
                 android:background="@drawable/ic_baseline_open_in_full_24_dark"
                 android:contentDescription="@string/maximize_button_name" />
 
             <com.github.mikephil.charting.charts.LineChart
-                android:id="@+id/visualizationChart"
+                android:id="@+id/dailyDataChart"
                 android:layout_width="match_parent"
                 android:layout_height="339dp"
                 android:layout_marginTop="@dimen/small_padding"
@@ -74,6 +74,17 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/checkBoxGroup"/>
+
+            <com.github.mikephil.charting.charts.BubbleChart
+                android:id="@+id/averagePhaseChart"
+                android:layout_width="match_parent"
+                android:layout_height="339dp"
+                android:layout_marginTop="@dimen/reg_padding"
+                android:layout_marginStart="@dimen/small_padding"
+                android:layout_marginEnd="@dimen/small_padding"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/dailyDataChart"/>
 
             <LinearLayout
                 android:id="@+id/loading_container"
@@ -85,8 +96,8 @@
                 android:layout_marginEnd="@dimen/small_padding"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="@id/visualizationChart"
-                app:layout_constraintBottom_toBottomOf="@id/visualizationChart">
+                app:layout_constraintTop_toTopOf="@id/dailyDataChart"
+                app:layout_constraintBottom_toBottomOf="@id/averagePhaseChart">
 
                 <TextView
                     android:id="@+id/loading_description"
@@ -94,7 +105,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="@dimen/big_padding"
                     android:gravity="center"
-                    android:text="Optimizing filter"/>
+                    android:text="@string/loading_container_text"/>
 
                 <ProgressBar
                     android:id="@+id/progressBar"
@@ -102,6 +113,7 @@
                     android:layout_height="100dp"
                     android:layout_marginBottom="@dimen/big_padding"/>
             </LinearLayout>
+
 
 <!--            <Button-->
 <!--                android:id="@+id/optimize_button"-->
@@ -130,7 +142,7 @@
                 app:layout_constraintHorizontal_bias="0.0"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/visualizationChart"
+                app:layout_constraintTop_toBottomOf="@id/averagePhaseChart"
                 app:layout_constraintBottom_toBottomOf="parent"/>
 
 <!--            <Button-->
