@@ -67,9 +67,13 @@ If you find the work done in either article useful, please cite accordingly.
 ```
 
 ```bibtex
-@article{ikeefficient,
+@inproceedings{ike2023efficient,
   title={Efficient Estimation of the Human Circadian Phase via Kalman Filtering},
-  author={Ike, Chukwuemeka O and Wen, John T and Oishi, Meeko MK and Brown, Lee K and Julius, A Agung}
+  author={Ike, Chukwuemeka O and Wen, John T and Oishi, Meeko M K and Brown, Lee K and Julius, A Agung},
+  booktitle={2023 45th Annual International Conference of the IEEE Engineering in Medicine \& Biology Society (EMBC)},
+  pages={1--6},
+  year={2023},
+    month={7},
 }
 ```
 
